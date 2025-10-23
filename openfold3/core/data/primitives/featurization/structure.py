@@ -225,7 +225,7 @@ def make_chain_pair_labels_padded(
         (largest_chain_index + 1, largest_chain_index + 1), dtype=torch.int
     )
 
-    for idx, inter_ab_ag_type in enumerate(inter_chain_types):
+    for idx, inter_ab_ag_type in enumerate(inter_chain_types, start=1):
         chain_id_pairs = type_to_chain_id_pair[inter_ab_ag_type]
         if len(chain_id_pairs) > 0:
             for chain_id_i, chain_id_j in chain_id_pairs:
