@@ -407,40 +407,39 @@ class OpenFold3AllAtom(ModelRunner):
 
                 # Log LR and step metrics only after the optimizer step
                 # to mimic logging behavior when using automatic optimization
-                if self.logger is not None:
-                    if self.log_lr:
-                        self.log(
-                            "AlphaFoldLRScheduler",
-                            opt.param_groups[0]["lr"],
-                            on_step=True,
-                            on_epoch=False,
-                            logger=True,
-                            sync_dist=False,
-                        )
-
-                    self._log(
-                        loss_breakdown,
-                        batch,
-                        outputs,
-                        train=True,
-                        log_train_step_metrics=True,
-                    )
-
-                    # Extremely dumb workaround for PL step logging issues. Avoids using
-                    # `self.trainer.fit_loop.epoch_loop._batches_that_stepped` if this
-                    # metric exists.
-                    # TODO: Consider just using self.logger.log_metrics()
-                    #  instead and just bypass PL self.log() entirely.
+                if self.log_lr:
                     self.log(
-                        "step",
-                        float(self.global_step),
+                        "AlphaFoldLRScheduler",
+                        opt.param_groups[0]["lr"],
                         on_step=True,
                         on_epoch=False,
                         logger=True,
                         sync_dist=False,
                     )
 
-            elif self.logger is not None:
+                self._log(
+                    loss_breakdown,
+                    batch,
+                    outputs,
+                    train=True,
+                    log_train_step_metrics=True,
+                )
+
+                # Extremely dumb workaround for PL step logging issues. Avoids using
+                # `self.trainer.fit_loop.epoch_loop._batches_that_stepped` if this
+                # metric exists.
+                # TODO: Consider just using self.logger.log_metrics()
+                #  instead and just bypass PL self.log() entirely.
+                self.log(
+                    "step",
+                    float(self.global_step),
+                    on_step=True,
+                    on_epoch=False,
+                    logger=True,
+                    sync_dist=False,
+                )
+
+            else:
                 # Always update epoch metrics
                 self._log(
                     loss_breakdown,
@@ -486,8 +485,7 @@ class OpenFold3AllAtom(ModelRunner):
             # Compute loss
             loss, loss_breakdown = self.loss(batch, outputs, _return_breakdown=True)
 
-            if self.logger is not None:
-                self._log(loss_breakdown, batch, outputs)
+            self._log(loss_breakdown, batch, outputs)
 
         except Exception:
             logger.exception(
@@ -537,8 +535,7 @@ class OpenFold3AllAtom(ModelRunner):
             # Compute loss and other metrics
             _, loss_breakdown = self.loss(batch, outputs, _return_breakdown=True)
 
-            if self.logger is not None:
-                self._log(loss_breakdown, batch, outputs, train=False)
+            self._log(loss_breakdown, batch, outputs, train=False)
 
         except Exception:
             logger.exception(f"Validation step failed with pdb id {', '.join(pdb_id)}")
@@ -690,17 +687,13 @@ class OpenFold3AllAtom(ModelRunner):
 
     def on_train_epoch_end(self):
         """Log aggregated epoch metrics for training."""
-        if self.logger is not None:
-            self._log_epoch_metrics(metrics=self.train_losses)
-            self._log_epoch_metrics(metrics=self.train_metrics)
+        self._log_epoch_metrics(metrics=self.train_losses)
+        self._log_epoch_metrics(metrics=self.train_metrics)
 
     def on_validation_epoch_end(self):
         """Log aggregated epoch metrics for validation."""
-        if self.logger is not None:
-            self._log_epoch_metrics(metrics=self.val_losses)
-            self._log_epoch_metrics(
-                metrics=self.val_metrics, compute_model_selection=True
-            )
+        self._log_epoch_metrics(metrics=self.val_losses)
+        self._log_epoch_metrics(metrics=self.val_metrics, compute_model_selection=True)
 
         # Restore the model weights to normal
         self.model.load_state_dict(self.cached_weights)
