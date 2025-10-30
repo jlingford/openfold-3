@@ -17,6 +17,10 @@ from itertools import combinations
 
 import torch
 
+from openfold3.core.data.resources.lists import (
+    AB_AG_CHAIN_PAIR_TYPES,
+    AB_AG_CHAIN_TYPES,
+)
 from openfold3.core.metrics.confidence import compute_plddt
 from openfold3.core.metrics.rasa import compute_rasa_batch
 from openfold3.core.utils.atomize_utils import broadcast_token_feat_to_atoms
@@ -94,7 +98,7 @@ def select_inter_filter_mask(
         inter_mask_atomized:
             [*, N_atom, N_atom] Pairwise filter for inter-chain computations
         mol_type_mask:
-            [*, N_atom] Boolean mask for molecule type to select from
+            [*, N_atom, N_atom] Boolean mask for molecule type to select from
             inter_mask_atomized
         out_shape:
             Shape of output tensor
@@ -125,31 +129,42 @@ def lddt(
     eps: float | None = 1e-10,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
-    Calculates lddt scores from pair distances
-    Compute on all atoms within the same chain_type (protein, ligand, rna, dna)
+    Calculates lddt scores from pair distances.
+
+    Performs a disjoint calculation on within-chain and cross-chain distances.
 
     Args:
-        pair_dist_pred_pos: pairwise distance of prediction [*, n_atom, n_atom]
-        pair_dist_gt_pos: pairwise distance of gt [*, n_atom, n_atom]
-        all_atom_mask: atom level mask [*, n_atom]
-        intra_mask_filter:[*, n_atom] filter for intra chain computations
-        inter_mask_filter: [*, n_atom, n_atom] pairwise interaction filter
-        asym_id: atomized asym_id feature [*, n_atom]
-        threshold: a list of thresholds to apply for lddt computation
-            - Standard values: [0.5, 1., 2., 4.]
-            - lddt_uha (for ligands): [0.25, 0.5, 0.75, 1.]
-        cutoff: distance cutoff (aka. inclusion radius)
-            - Nucleic Acids (DNA/RNA) 30.
-            - Other biomolecules (Protein/Ligands) 15.
-        eps: epsilon
+        pair_dist_pred_pos:
+            Pairwise distance of prediction [*, n_atom, n_atom]
+        pair_dist_gt_pos:
+            Pairwise distance of gt [*, n_atom, n_atom]
+        all_atom_mask:
+            Atom level mask (typically for subsetting the calculation to atoms that are
+            resolved in the GT) [*, n_atom]
+        intra_mask_filter: [*, n_atom]
+            Filter for intra chain computations
+        inter_mask_filter: [*, n_atom, n_atom]
+            Filter for inter chain computations
+        asym_id:
+            Atomized asym_id feature [*, n_atom]
+        threshold:
+            A list of thresholds to apply for lddt computation - Standard values: [0.5,
+            1., 2., 4.] - lddt_uha (for ligands): [0.25, 0.5, 0.75, 1.]
+        cutoff:
+            distance cutoff (aka. inclusion radius) - Nucleic Acids (DNA/RNA) 30. -
+            Other biomolecules (Protein/Ligands) 15.
+        eps:
+            Constant for numerical stability.
 
     Returns:
-        intra_score: intra lddt scores [*]
-        inter_score: inter lddt scores [*]
+        intra_score:
+            intra lddt scores [*]
+        inter_score:
+            inter lddt scores [*]
 
     Note:
-        returns None for inter_score if inter_lddt invalid
-        (ie. single chain, no atom pair within cutoff)
+        returns None for inter_score if inter_lddt invalid (ie. single chain, no atom
+        pair within cutoff)
     """
     # create a mask
     n_atom = pair_dist_gt_pos.shape[-2]
@@ -206,20 +221,30 @@ def interface_lddt(
     eps: float | None = 1e-10,
 ) -> torch.Tensor:
     """
-    Calculates interface_lddt (ilddt) score between two different molecules
+    Calculates interface_lddt (ilddt) score between two different molecules.
+
+    Note that, unlike the lddt function, this function uses as inputs the flat 3D
+    coordinate tensors, not the pairwise distances between coordinates
 
     Args:
-        all_atom_pred_pos_1: predicted protein coordinates [*, n_atom1, 3]
-        all_atom_pred_pos_2: predicted interacting molecule coordinates [*, n_atom2, 3]
-        all_atom_gt_pos_1: gt protein coordinates [*, n_atom1, 3]
-        all_atom_gt_pos_2: gt interacting molecule coordinates  [*, n_atom2, 3]
-        all_atom_mask1: protein atom mask [*, n_atom1]
-        all_atom_mask2: interacting molecule atom maks [*, n_atom2]
-        filter_mask: [*, n_atom1, n_atom2] pairwise filter for atom types
-        cutoff: distance cutoff
-            - Nucleic Acids (DNA/RNA) 30.
-            - Others(Protein/Ligands) 15.
-        eps: epsilon
+        all_atom_pred_pos_1:
+            predicted protein coordinates [*, n_atom1, 3]
+        all_atom_pred_pos_2:
+            predicted interacting molecule coordinates [*, n_atom2, 3]
+        all_atom_gt_pos_1:
+            gt protein coordinates [*, n_atom1, 3]
+        all_atom_gt_pos_2:
+            gt interacting molecule coordinates  [*, n_atom2, 3]
+        all_atom_mask1:
+            protein atom mask [*, n_atom1]
+        all_atom_mask2:
+            interacting molecule atom maks [*, n_atom2]
+        filter_mask:
+            pairwise filter for atom types [*, n_atom1, n_atom2]
+        cutoff:
+            distance cutoff - Nucleic Acids (DNA/RNA) 30. - Others(Protein/Ligands) 15.
+        eps:
+            Constant for numerical stability.
 
     Returns:
         scores: ilddt scores [*]
@@ -711,6 +736,129 @@ def get_protein_metrics(
     out["clash_intra_protein"] = intra_clash
     out["clash_inter_protein_protein"] = inter_clash
 
+    return out
+
+
+def get_ab_ag_metrics(
+    intra_ab_ag_type_atomized: torch.Tensor,
+    intra_ab_ag_type_atomized_filtered: torch.Tensor,
+    inter_ab_ag_type_atomized_filtered: torch.Tensor,
+    gt_coords: torch.Tensor,
+    pred_coords: torch.Tensor,
+    all_atom_mask: torch.Tensor,
+    asym_id_atomized: torch.Tensor,
+    eps: float = 1e-10,
+) -> dict[str, torch.Tensor]:
+    """_summary_
+
+    Args:
+        intra_ab_ag_type_atomized (torch.Tensor):
+            Per-atom int tensor of AB/AG chain types. [*, n_atom]
+        intra_ab_ag_type_atomized_filtered (torch.Tensor):
+            Per-atom int tensor of AB/AG chain types with the validation filter applied.
+            [*, n_atom]
+        inter_ab_ag_type_atomized_filtered (torch.Tensor):
+            Per-atom-pair int tensor of AB/AG chain pair types with the validation
+            filter applied. [*, n_atom, n_atom]
+        gt_coords (torch.Tensor):
+            Ground truth coordinates for the whole complex. [*, n_atom, 3]
+        pred_coords (torch.Tensor):
+            Predicted coordinates for the whole complex. [*, n_atom, 3]
+        all_atom_mask (torch.Tensor):
+            Atom level mask (typically for subsetting the calculation to atoms that are
+            resolved in the GT) [*, n_atom]
+        asym_id_atomized (torch.Tensor):
+            Per-atom int tensor of the asym ID for the chain each atom belongs to. [*,
+            n_atom]
+        eps (float, optional):
+            Constant for numerical stability. Defaults to 1e-10.
+
+    Returns:
+        dict[str, torch.Tensor]:
+            Chain lDDT scores for heavy, light and antigen chains. Chain pair lDDT
+            scores for pairwise combinations of these chain types.
+
+    """
+    out = {}
+
+    ab_ag_type_to_chain_id = {t: i for (i, t) in enumerate(AB_AG_CHAIN_TYPES, start=1)}
+    ab_ag_type_to_chain_id_pair = {
+        t: i for (i, t) in enumerate(AB_AG_CHAIN_PAIR_TYPES, start=1)
+    }
+    pred_coords_pair = torch.sqrt(
+        eps
+        + torch.sum(
+            (pred_coords.unsqueeze(-2) - pred_coords.unsqueeze(-3)) ** 2, dim=-1
+        )
+    )
+    gt_coords_pair = torch.sqrt(
+        eps
+        + torch.sum((gt_coords.unsqueeze(-2) - gt_coords.unsqueeze(-3)) ** 2, dim=-1)
+    )
+    # intra chain lddts
+    for t, i in ab_ag_type_to_chain_id.items():
+        intra_ab_ag_mask_atomized = intra_ab_ag_type_atomized_filtered == i
+        if torch.any(intra_ab_ag_mask_atomized):
+            out[f"lddt_intra_{t}"], _ = lddt(
+                pair_dist_pred_pos=pred_coords_pair,
+                pair_dist_gt_pos=gt_coords_pair,
+                all_atom_mask=all_atom_mask,
+                intra_mask_filter=intra_ab_ag_mask_atomized,
+                inter_mask_filter=torch.zeros_like(pred_coords_pair),
+                asym_id=asym_id_atomized,
+            )
+
+    # inter chain lddts
+    for t, ij in ab_ag_type_to_chain_id_pair.items():
+        ti, tj = t
+        inter_ab_ag_mask_atomized_ij = inter_ab_ag_type_atomized_filtered == ij
+        if torch.any(inter_ab_ag_mask_atomized_ij):
+            intra_ab_ag_type_atomized_i = (
+                intra_ab_ag_type_atomized == ab_ag_type_to_chain_id[ti]
+            )
+            intra_ab_ag_type_atomized_j = (
+                intra_ab_ag_type_atomized == ab_ag_type_to_chain_id[tj]
+            )
+
+            bs_i = intra_ab_ag_type_atomized_i.shape[:-1]
+            bs_j = intra_ab_ag_type_atomized_j.shape[:-1]
+
+            pred_coords_i = pred_coords[intra_ab_ag_type_atomized_i].view(
+                (bs_i) + (-1, 3)
+            )
+            pred_coords_j = pred_coords[intra_ab_ag_type_atomized_j].view(
+                (bs_j) + (-1, 3)
+            )
+            gt_coords_i = gt_coords[intra_ab_ag_type_atomized_i].view((bs_i) + (-1, 3))
+            gt_coords_j = gt_coords[intra_ab_ag_type_atomized_j].view((bs_j) + (-1, 3))
+            all_atom_mask_i = all_atom_mask[intra_ab_ag_type_atomized_i].view(
+                (bs_i) + (-1,)
+            )
+            all_atom_mask_j = all_atom_mask[intra_ab_ag_type_atomized_j].view(
+                (bs_j) + (-1,)
+            )
+
+            intra_ab_ag_type_atomized_pair = (
+                intra_ab_ag_type_atomized_i[..., None]
+                * intra_ab_ag_type_atomized_j[..., None, :]
+            )
+            inter_mask_atomized_subset = select_inter_filter_mask(
+                inter_mask_atomized=inter_ab_ag_mask_atomized_ij,
+                mol_type_mask=intra_ab_ag_type_atomized_pair,
+                out_shape=(
+                    bs_i[:-1] + (all_atom_mask_i.shape[-1], all_atom_mask_j.shape[-1])
+                ),
+            )
+
+            out[f"lddt_inter_{ti}_{tj}"] = interface_lddt(
+                all_atom_pred_pos_1=pred_coords_i,
+                all_atom_pred_pos_2=pred_coords_j,
+                all_atom_gt_pos_1=gt_coords_i,
+                all_atom_gt_pos_2=gt_coords_j,
+                all_atom_mask1=all_atom_mask_i,
+                all_atom_mask2=all_atom_mask_j,
+                filter_mask=inter_mask_atomized_subset,
+            )
     return out
 
 
@@ -1557,6 +1705,10 @@ def get_metrics(
             'gdt_ha': Global Distance Test (High Accuracy).
             'rasa':
                 Relative accessible surface area for proteins with unresolved residues.
+            'lddt_intra_{AB-AG chain types}': Intra-chain lDDT for atoms in AB heavy
+                chains, AB light chains or AG chains.
+            'lddt_inter_{AB-AG chain pair types}': Inter-chain lDDT between pairwise
+                combinations of AB-AG chain types.
 
     Note:
         if no appropriate substrates, no corresponding metrics will be included
@@ -1643,14 +1795,34 @@ def get_metrics(
     )
 
     # set up filters for validation metrics if present, otherwise pass ones
+    intra_mask_base = expand_sample_dim(atom_padding_mask)
+    inter_mask_base = expand_sample_dim(
+        atom_padding_mask[..., None] * atom_padding_mask[..., None, :]
+    )
     intra_filter_atomized = batch["ground_truth"].get(
-        "intra_filter_atomized", expand_sample_dim(atom_padding_mask)
+        "intra_filter_atomized", intra_mask_base
     )
     inter_filter_atomized = batch["ground_truth"].get(
         "inter_filter_atomized",
-        expand_sample_dim(
-            atom_padding_mask[..., None] * atom_padding_mask[..., None, :]
-        ),
+        inter_mask_base,
+    )
+
+    # Set up AB/AG filters for validation
+    intra_ab_ag_type_atomized = batch["ground_truth"].get("intra_ab_ag_type_atomized")
+    if intra_ab_ag_type_atomized is not None:
+        intra_ab_ag_type_atomized = expand_sample_dim(intra_ab_ag_type_atomized)
+    else:
+        intra_ab_ag_type_atomized = torch.zeros_like(intra_mask_base)
+    intra_ab_ag_type_atomized_filtered = (
+        intra_ab_ag_type_atomized * intra_filter_atomized.to(torch.int32)
+    )
+    inter_ab_ag_type_atomized = batch["ground_truth"].get("inter_ab_ag_type_atomized")
+    if inter_ab_ag_type_atomized is not None:
+        inter_ab_ag_type_atomized = expand_sample_dim(inter_ab_ag_type_atomized)
+    else:
+        inter_ab_ag_type_atomized = torch.zeros_like(inter_mask_base)
+    inter_ab_ag_type_atomized_filtered = (
+        inter_ab_ag_type_atomized * inter_filter_atomized.to(torch.int32)
     )
 
     if torch.any(is_protein_atomized):
@@ -1790,6 +1962,18 @@ def get_metrics(
             # otherwise NaN is returned
             if not torch.isnan(rasa).any():
                 metrics["rasa"] = rasa
+
+        # Compute AB/AG metrics
+        ab_ag_metrics = get_ab_ag_metrics(
+            intra_ab_ag_type_atomized=intra_ab_ag_type_atomized,
+            intra_ab_ag_type_atomized_filtered=intra_ab_ag_type_atomized_filtered,
+            inter_ab_ag_type_atomized_filtered=inter_ab_ag_type_atomized_filtered,
+            gt_coords=gt_coords,
+            pred_coords=pred_coords,
+            all_atom_mask=all_atom_mask,
+            asym_id_atomized=asym_id_atomized,
+        )
+        metrics = metrics | ab_ag_metrics
 
     valid_metrics = {
         name: value for name, value in metrics.items() if value is not None
