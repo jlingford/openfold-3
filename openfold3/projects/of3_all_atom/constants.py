@@ -21,6 +21,11 @@ metrics for logging.
 # Losses
 ###################################
 
+from openfold3.core.data.resources.lists import (
+    AB_AG_CHAIN_PAIR_TYPES,
+    AB_AG_CHAIN_TYPES,
+)
+
 CONFIDENCE_LOSSES = [
     "plddt_loss",
     "pde_loss",
@@ -152,6 +157,8 @@ VAL_EXTRA_METRICS = [
     "plddt_dna",
     "plddt_rna",
     "plddt_complex",
+    *[f"lddt_intra_{t}" for t in AB_AG_CHAIN_TYPES],
+    *[f"lddt_inter_{ti}_{tj}" for (ti, tj) in AB_AG_CHAIN_PAIR_TYPES],
 ]
 
 VAL_LOGGED_METRICS = [
