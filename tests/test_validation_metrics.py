@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import torch
 
-from openfold3.core.metrics.validation_all_atom import (
+from openfold3.core.metrics.quality import (
     drmsd,
     gdt_ha,
     gdt_ts,

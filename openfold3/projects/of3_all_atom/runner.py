@@ -33,7 +33,7 @@ from openfold3.core.metrics.model_selection import (
     compute_final_model_selection_metric,
     compute_valid_model_selection_metrics,
 )
-from openfold3.core.metrics.validation_all_atom import (
+from openfold3.core.metrics.quality import (
     get_metrics,
     get_metrics_chunked,
 )
