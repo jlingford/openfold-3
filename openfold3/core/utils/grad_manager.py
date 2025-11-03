@@ -184,16 +184,14 @@ class PerSampleGradManager:
         global_count = local_count.item()
 
         # Log the average unclipped per-sample norm using the metric
-        if (
-            global_count > 0
-            and self.avg_unclipped_norm_metric is not None
-            and self._logger is not None
-        ):
+        if global_count > 0 and self.avg_unclipped_norm_metric is not None:
             avg_per_sample_norm = self.avg_unclipped_norm_metric.compute()
-            self._logger.log_metrics(
-                {"extra_gradients/avg_unclipped_global_grad_norm": avg_per_sample_norm},
-                step=self._trainer.global_step,
-            )
+
+            if self._logger is not None:
+                self._logger.log_metrics(
+                    {"extra_gradients/avg_unclipped_grad_norm": avg_per_sample_norm},
+                    step=self._trainer.global_step,
+                )
 
         # If no samples were processed (edge case)
         if global_count == 0:
@@ -227,7 +225,7 @@ class PerSampleGradManager:
             return
 
         self._logger.log_metrics(
-            {"extra_gradients/avg_clipped_global_grad_norm": global_norm},
+            {"extra_gradients/avg_clipped_grad_norm": global_norm},
             step=self._trainer.global_step,
         )
 
