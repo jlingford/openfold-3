@@ -575,16 +575,15 @@ class OpenFold3AllAtom(ModelRunner):
         """
         debug_settings = self.config.settings.debug
         should_log_extra_metrics = debug_settings.log_extra_grad_metrics
-        is_logging_disabled = self.logger is None
         has_frozen_params = self.config.settings.train_confidence_only
 
-        if is_logging_disabled or has_frozen_params or not should_log_extra_metrics:
+        if has_frozen_params or not should_log_extra_metrics:
             return
 
         single_transition_grads = {}
 
         # Only rank zero will actually log the gradients
-        log_grad_metrics = self.trainer.is_global_zero
+        log_grad_metrics = self.trainer.is_global_zero and self.logger is not None
 
         # Only log 4 representative blocks to reduce overhead
         block_idxs = [0, 16, 32, 47]
