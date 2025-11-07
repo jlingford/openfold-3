@@ -378,15 +378,6 @@ class TrainingExperimentRunner(ExperimentRunner):
                 )
                 self.pl_trainer_args.accumulate_grad_batches = 1
 
-            # Update the epoch length to account for gradient accumulation
-            accum_grad_batches = (
-                self.model_config.settings.manual_optimization.accumulate_grad_batches
-            )
-
-            self.pl_trainer_args.log_every_n_steps = (
-                self.pl_trainer_args.log_every_n_steps * accum_grad_batches
-            )
-
             # Disable the `LearningRateMonitor` callback, logging is handled
             # manually in the training step
             if self.logging_config.log_lr and self.use_wandb:

@@ -436,12 +436,13 @@ class OpenFold3AllAtom(ModelRunner):
                 # Workaround for PL step logging issues. Avoids using
                 # `self.trainer.fit_loop.epoch_loop._batches_that_stepped` if this
                 # metric exists.
+                optimizer_step = self.lr_schedulers().last_epoch
                 self.log(
                     "step",
-                    self.global_step,
+                    optimizer_step,
                     on_step=True,
-                    on_epoch=False,
-                    logger=True,
+                    on_epoch=True,
+                    logger=False,
                     sync_dist=False,
                 )
 
