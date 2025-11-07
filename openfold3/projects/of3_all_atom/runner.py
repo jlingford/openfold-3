@@ -436,13 +436,12 @@ class OpenFold3AllAtom(ModelRunner):
                 # Workaround for PL step logging issues. Avoids using
                 # `self.trainer.fit_loop.epoch_loop._batches_that_stepped` if this
                 # metric exists.
-                optimizer_step = self.lr_schedulers().last_epoch
                 self.log(
                     "step",
-                    optimizer_step,
+                    self.global_step,
                     on_step=True,
-                    on_epoch=True,
-                    logger=False,
+                    on_epoch=False,
+                    logger=True,
                     sync_dist=False,
                 )
 
@@ -678,17 +677,26 @@ class OpenFold3AllAtom(ModelRunner):
         if not self.trainer.sanity_checking:
             # Sync and reduce metrics across ranks
             metrics_output = metrics.compute()
-            for name, result in metrics_output.items():
-                # Only log metrics that have been updated
-                if self.metric_enabled.get(name):
-                    self.log(
-                        name,
-                        result,
-                        on_step=False,
-                        on_epoch=True,
-                        logger=True,
-                        sync_dist=False,  # Already synced in compute()
-                    )
+            if self.per_sample_grad_clipping:
+                enabled_metrics = {
+                    name: result
+                    for name, result in metrics_output.items()
+                    if self.metric_enabled.get(name)
+                }
+                if self.logger is not None:
+                    self.logger.log_metrics(enabled_metrics, step=self.global_step)
+            else:
+                for name, result in metrics_output.items():
+                    # Only log metrics that have been updated
+                    if self.metric_enabled.get(name):
+                        self.log(
+                            name,
+                            result,
+                            on_step=False,
+                            on_epoch=True,
+                            logger=True,
+                            sync_dist=False,  # Already synced in compute()
+                        )
 
             if compute_model_selection:
                 model_selection = compute_final_model_selection_metric(
@@ -696,14 +704,19 @@ class OpenFold3AllAtom(ModelRunner):
                     model_selection_weights=self.model_selection_weights,
                 )
 
-                self.log(
-                    "val/model_selection",
-                    model_selection,
-                    on_step=False,
-                    on_epoch=True,
-                    logger=True,
-                    sync_dist=False,
-                )
+                if self.per_sample_grad_clipping and self.logger is not None:
+                    self.logger.log_metrics(
+                        {"val/model_selection": model_selection}, step=self.global_step
+                    )
+                else:
+                    self.log(
+                        "val/model_selection",
+                        model_selection,
+                        on_step=False,
+                        on_epoch=True,
+                        logger=True,
+                        sync_dist=False,
+                    )
 
         # Reset metrics for next epoch
         metrics.reset()
