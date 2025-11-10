@@ -121,7 +121,7 @@ class AttentionPairBias(nn.Module):
     def _prep_bias(
         self,
         a: torch.Tensor,
-        z: torch.Tensor | None,
+        z: torch.Tensor,
         mask: torch.Tensor | None,
     ) -> list[torch.Tensor]:
         """
@@ -333,8 +333,8 @@ class CrossAttentionPairBias(nn.Module):
     def _prep_block_inputs(
         self,
         a: torch.Tensor,
-        z: torch.Tensor | None,
-        mask: torch.Tensor | None,
+        z: torch.Tensor,
+        mask: torch.Tensor,
     ) -> tuple:
         """
         Args:
@@ -348,12 +348,6 @@ class CrossAttentionPairBias(nn.Module):
         Returns:
             List of bias terms. Includes the pair bias and attention mask.
         """
-        if mask is None:
-            # [*, N]
-            mask = a.new_ones(
-                a.shape[:-1],
-            )
-
         a_query, a_key, mask = convert_single_rep_to_blocks(
             ql=a, n_query=self.n_query, n_key=self.n_key, atom_mask=mask
         )
@@ -403,11 +397,17 @@ class CrossAttentionPairBias(nn.Module):
         batch_dims = a.shape[:-2]
         n_atom, n_dim = a.shape[-2:]
 
+        if mask is None:
+            # [*, N]
+            mask = a.new_ones(
+                a.shape[:-1],
+            )
+
         a_q, a_k, biases = self._prep_block_inputs(a=a, z=z, mask=mask)
 
         if self.use_ada_layer_norm:
             s_q, s_k, _ = convert_single_rep_to_blocks(
-                ql=s, n_query=self.n_query, n_key=self.n_key
+                ql=s, n_query=self.n_query, n_key=self.n_key, atom_mask=mask
             )
             a_q = self.layer_norm_a_q(a_q, s_q)
             a_k = self.layer_norm_a_k(a_k, s_k)
