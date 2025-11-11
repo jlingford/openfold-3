@@ -185,7 +185,7 @@ class TrainingExperimentSettings(ExperimentSettings):
     """General settings specific for training experiments"""
 
     mode: ValidModeType = "train"
-    seed: int | None = None
+    seed: int = 42
     restart_checkpoint_path: str | None = None
     preemption_safe_resume: bool = False
     ckpt_load_settings: CheckpointLoadingSettings = CheckpointLoadingSettings()
