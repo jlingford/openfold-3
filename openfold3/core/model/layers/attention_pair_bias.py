@@ -315,7 +315,6 @@ class CrossAttentionPairBias(nn.Module):
             self.layer_norm_a_q = LayerNorm(c_in=self.c_q)
             self.layer_norm_a_k = LayerNorm(c_in=self.c_q)
 
-        self.layer_norm_z = LayerNorm(self.c_z, **linear_init_params.layer_norm_z)
         self.linear_z = Linear(self.c_z, no_heads, **linear_init_params.linear_z)
 
         self.mha = Attention(
@@ -355,9 +354,6 @@ class CrossAttentionPairBias(nn.Module):
         # [*, 1, 1, N]
         mask_bias = (self.inf * (mask - 1))[..., None, :, :]
         biases = [mask_bias]
-
-        # [*, N, N, C_z]
-        z = self.layer_norm_z(z)
 
         # [*, N, N, no_heads]
         z = self.linear_z(z)
