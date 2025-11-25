@@ -55,51 +55,6 @@ class RNAMonomerDataset(BaseOF3Dataset):
         # All samples are RNA
         self.single_moltype = "RNA"
     
-    def create_all_features(
-        self,
-        pdb_id: str,
-        preferred_chain_or_interface: str | list[str, str] | None,
-        return_atom_arrays: bool,
-        return_crop_strategy: bool,
-    ) -> dict:
-        """Creates all features for a single datapoint."""
-
-        sample_data = {"features": {}}
-
-        # Target & GT structure and conformer features
-        target_structure_data = self.create_structure_features(
-            pdb_id,
-            preferred_chain_or_interface,
-            return_atom_arrays,
-            return_crop_strategy,
-        )
-        sample_data["features"].update(
-            target_structure_data["target_structure_features"]
-        )
-        sample_data["features"].update(
-            target_structure_data["reference_conformer_features"]
-        )
-        # MSA features
-        msa_features = self.create_msa_features(
-            pdb_id,
-            target_structure_data["atom_array_cropped"],
-        )
-        sample_data["features"].update(msa_features)
-        # Loss switches
-        loss_features = self.create_loss_features(pdb_id)
-        sample_data["features"].update(loss_features)
-
-        if return_atom_arrays:
-            sample_data["atom_array"] = target_structure_data["atom_array"]
-            sample_data["atom_array_gt"] = target_structure_data["atom_array_gt"]
-            sample_data["atom_array_cropped"] = target_structure_data[
-                "atom_array_cropped"
-            ]
-        if return_crop_strategy:
-            sample_data["crop_strategy"] = target_structure_data["crop_strategy"]
-
-        return sample_data
-
     def create_datapoint_cache(self):
         """Creates the datapoint_cache for uniform sampling.
 
