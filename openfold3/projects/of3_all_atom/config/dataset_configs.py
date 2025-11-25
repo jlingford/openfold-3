@@ -204,6 +204,7 @@ class ProteinMonomerConfig(DefaultDatasetConfigSection):
         }
     )
 
+
 @register_dataset_config("RNAMonomerDataset")
 class RNAMonomerConfig(DefaultDatasetConfigSection):
     sample_in_order: bool = False
@@ -227,6 +228,7 @@ class RNAMonomerConfig(DefaultDatasetConfigSection):
             "pde": 0.0,
         }
     )
+
 
 @register_dataset_config("DisorderedPDBDataset")
 class DisorderedPDBConfig(DefaultDatasetConfigSection):

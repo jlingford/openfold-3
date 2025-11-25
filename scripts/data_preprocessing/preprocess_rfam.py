@@ -5,7 +5,8 @@ Pipeline:
 1) mmseqs createdb Rfam.fa rfamDB
 2) mmseqs cluster rfamDB rfamDB_clu tmp --min-seq-id 0.9 -c 0.8 --cov-mode 1
 3) mmseqs createtsv rfamDB rfamDB rfamDB_clu rfamDB_clu.tsv
-4) awk '{n[$1]++} END {for (c in n) if (n[c] >= 3) print c}' rfamDB_clu.tsv > reps_ge3.ids
+4) awk '{n[$1]++} END {for (c in n) if (n[c] >= 3) print c}' rfamDB_clu.tsv 
+    > reps_ge3.ids
 5) mmseqs createsubdb rfamDB_clu rfamDB rfamDB_clu_rep
 6) mmseqs convert2fasta rfamDB_clu_rep rfamDB_clu_rep.fasta
 7) awk 'NR==FNR {ids[$1]; next} /^>/ {id=substr($1,2); keep=(id in ids)} keep' \
@@ -15,10 +16,10 @@ Pipeline:
 This script replicates that logic in Python, with mmseqs calls + Python filters.
 """
 
-import sys              # command-line args, stderr printing
-import subprocess       # run external mmseqs commands
-from pathlib import Path  # nicer path handling
+import subprocess  # run external mmseqs commands
+import sys  # command-line args, stderr printing
 from collections import Counter  # count cluster sizes
+from pathlib import Path  # nicer path handling
 
 
 def run(cmd: list[str]) -> None:
@@ -33,7 +34,8 @@ def count_clusters(tsv_path: Path, min_size: int, ids_out_path: Path) -> int:
     with size >= min_size to ids_out_path.
 
     Shell equivalent:
-      awk '{n[$1]++} END {for (c in n) if (n[c] >= 3) print c}' rfamDB_clu.tsv > reps_ge3.ids
+      awk '{n[$1]++} END {for (c in n) if (n[c] >= 3) print c}' rfamDB_clu.tsv
+      > reps_ge3.ids
     """
     counts = Counter()
 
@@ -43,7 +45,7 @@ def count_clusters(tsv_path: Path, min_size: int, ids_out_path: Path) -> int:
             if not line.strip():
                 continue  # skip empty lines
             rep_id = line.split("\t", 1)[0]  # column 1 (cluster representative)
-            counts[rep_id] += 1              # increment cluster size
+            counts[rep_id] += 1  # increment cluster size
 
     kept = 0
     # Write representatives of clusters with size >= min_size
@@ -93,7 +95,7 @@ def filter_fasta_by_length(
     Shell equivalent: the long awk block that accumulates seqlen per record.
     """
     with fasta_in.open() as fin, fasta_out.open("w") as fout:
-        header = None           # current header line
+        header = None  # current header line
         seq_lines: list[str] = []  # all sequence lines for this record
 
         def flush_record() -> None:
@@ -111,8 +113,8 @@ def filter_fasta_by_length(
             if line.startswith(">"):
                 # We hit a new header: flush the previous record
                 flush_record()
-                header = line           # start new record
-                seq_lines = []          # reset sequence buffer
+                header = line  # start new record
+                seq_lines = []  # reset sequence buffer
             else:
                 # Sequence line: keep raw to preserve formatting
                 seq_lines.append(line)
@@ -134,34 +136,42 @@ def main() -> None:
     base = fasta_path.stem
 
     # MMseqs DB names derived from the base
-    db_prefix = base + "DB"           # rfamDB
-    db = Path(db_prefix)              # rfamDB
-    clu = Path(db_prefix + "_clu")    # rfamDB_clu
+    db_prefix = base + "DB"  # rfamDB
+    db = Path(db_prefix)  # rfamDB
+    clu = Path(db_prefix + "_clu")  # rfamDB_clu
 
     # Temp directory for mmseqs cluster
     tmp_dir = Path("tmp")
     tmp_dir.mkdir(exist_ok=True)
 
     # File names for various intermediate and final outputs
-    clu_tsv = Path(str(clu) + ".tsv")         # rfamDB_clu.tsv
-    reps_ids = Path("reps_ge3.ids")           # reps_ge3.ids
-    subdb = Path(db_prefix + "_clu_rep")      # rfamDB_clu_rep (DB)
-    subdb_fa = Path(str(subdb) + ".fasta")    # rfamDB_clu_rep.fasta
+    clu_tsv = Path(str(clu) + ".tsv")  # rfamDB_clu.tsv
+    reps_ids = Path("reps_ge3.ids")  # reps_ge3.ids
+    subdb = Path(db_prefix + "_clu_rep")  # rfamDB_clu_rep (DB)
+    subdb_fa = Path(str(subdb) + ".fasta")  # rfamDB_clu_rep.fasta
 
-    reps_ge3_fa = Path(f"{base}_reps_ge3.fa")               # Rfam_reps_ge3.fa
-    reps_ge3_len_fa = Path(f"{base}_reps_ge3_lenGT10.fa")   # Rfam_reps_ge3_lenGT10.fa
+    reps_ge3_fa = Path(f"{base}_reps_ge3.fa")  # Rfam_reps_ge3.fa
+    reps_ge3_len_fa = Path(f"{base}_reps_ge3_lenGT10.fa")  # Rfam_reps_ge3_lenGT10.fa
 
     # 1) mmseqs createdb Rfam.fa rfamDB
     run(["mmseqs", "createdb", str(fasta_path), str(db)])
 
     # 2) mmseqs cluster rfamDB rfamDB_clu tmp --min-seq-id 0.9 -c 0.8 --cov-mode 1
-    run([
-        "mmseqs", "cluster",
-        str(db), str(clu), str(tmp_dir),
-        "--min-seq-id", "0.9",
-        "-c", "0.8",
-        "--cov-mode", "1",
-    ])
+    run(
+        [
+            "mmseqs",
+            "cluster",
+            str(db),
+            str(clu),
+            str(tmp_dir),
+            "--min-seq-id",
+            "0.9",
+            "-c",
+            "0.8",
+            "--cov-mode",
+            "1",
+        ]
+    )
 
     # 3) mmseqs createtsv rfamDB rfamDB rfamDB_clu rfamDB_clu.tsv
     run(["mmseqs", "createtsv", str(db), str(db), str(clu), str(clu_tsv)])
@@ -183,9 +193,8 @@ def main() -> None:
 
     # Final status messages
     print(f"[DONE] reps from clusters >=3 written to: {reps_ge3_fa}", file=sys.stderr)
-    print(f"[DONE] length>10 subset written to:      {reps_ge3_len_fa}", file=sys.stderr)
+    print(f"[DONE] length>10 subset written to: {reps_ge3_len_fa}", file=sys.stderr)
 
 
 if __name__ == "__main__":
     main()
-

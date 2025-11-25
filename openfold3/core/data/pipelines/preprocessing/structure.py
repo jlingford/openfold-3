@@ -975,6 +975,7 @@ def preparse_monomer(
     )
     write_structure(atom_array, output_dir / f"{entry_id}/{entry_id}.pkl")
 
+
 # TODO: combine local and S3 monomer preparsing
 def preparse_RNA_monomer(
     entry_id: str,
@@ -991,6 +992,7 @@ def preparse_RNA_monomer(
         data_directory / entry_id / f"{entry_id}.{structure_file_format}"
     )
     write_structure(atom_array, output_dir / f"{entry_id}/structure.npz")
+
 
 class _RNAMonomerPreprocessingWrapper:
     def __init__(
@@ -1018,6 +1020,7 @@ class _RNAMonomerPreprocessingWrapper:
         except Exception as e:
             print(f"Failed to preparse monomer {entry_id}:\n{e}\n")
 
+
 class _ProteinMonomerPreprocessingWrapper:
     def __init__(
         self,
@@ -1043,6 +1046,7 @@ class _ProteinMonomerPreprocessingWrapper:
             )
         except Exception as e:
             print(f"Failed to preparse monomer {entry_id}:\n{e}\n")
+
 
 def preparse_RNA_monomer_structures(
     dataset_cache: RNAMonomerDatasetCache,
@@ -1079,6 +1083,7 @@ def preparse_RNA_monomer_structures(
             desc="2/2: Pre-parsing monomer structures",
         ):
             pass
+
 
 def preparse_protein_monomer_structures(
     dataset_cache: ProteinMonomerDatasetCache,

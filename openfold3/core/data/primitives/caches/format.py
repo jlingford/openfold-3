@@ -776,12 +776,14 @@ class ProteinMonomerChainData:
     template_ids: list[str] | None
     index: int
 
+
 @dataclass
 class RNAMonomerChainData:
     """Chain-wise data for protein monomers."""
 
     alignment_representative_id: str | None
     index: int
+
 
 # --- Interface data dataclasses ---
 @dataclass
@@ -850,11 +852,13 @@ class ProteinMonomerStructureData:
 
     chains: dict[str, ProteinMonomerChainData]
 
+
 @dataclass
 class RNAMonomerStructureData:
     """Structure data for protein monomers."""
 
     chains: dict[str, RNAMonomerChainData]
+
 
 ClusteredDatasetStructureDataCache: TypeAlias = DictOrLMDBDict[
     str, ClusteredDatasetStructureData
@@ -865,9 +869,7 @@ ValClusteredDatasetStructureDataCache: TypeAlias = DictOrLMDBDict[
 ProteinMonomerStructureDataCache: TypeAlias = DictOrLMDBDict[
     str, ProteinMonomerStructureData
 ]
-RNAMonomerStructureDataCache: TypeAlias = DictOrLMDBDict[
-    str, RNAMonomerStructureData
-]
+RNAMonomerStructureDataCache: TypeAlias = DictOrLMDBDict[str, RNAMonomerStructureData]
 
 
 # --- Reference molecule dataclasses ---
@@ -956,6 +958,7 @@ class ProteinMonomerDatasetCache(DatasetCache):
             )
         return structure_data
 
+
 @register_datacache
 @dataclass
 class RNAMonomerDatasetCache(DatasetCache):
@@ -987,8 +990,14 @@ class RNAMonomerDatasetCache(DatasetCache):
             )
         return structure_data
 
+
 # Grouped type-aliases for more convenient type-hinting of general-purpose functions
-ChainData: TypeAlias = PreprocessingChainData | PDBChainData | ProteinMonomerChainData | RNAMonomerChainData
+ChainData: TypeAlias = (
+    PreprocessingChainData
+    | PDBChainData
+    | ProteinMonomerChainData
+    | RNAMonomerChainData
+)
 StructureDataCache: TypeAlias = (
     PreprocessingStructureDataCache
     | DisorderedPreprocessingStructureDataCache

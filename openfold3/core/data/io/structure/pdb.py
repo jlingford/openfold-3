@@ -114,6 +114,7 @@ def parse_protein_monomer_pdb_tmp(
 
     return ParsedStructure(cif_file, atom_array)
 
+
 # TODO: refactor with PDB reader below as it currently only supports monomers
 def parse_RNA_monomer_pdb_tmp(
     file_path: Path | str,
@@ -134,8 +135,8 @@ def parse_RNA_monomer_pdb_tmp(
 
     ## no label fields in pdb files
     with open_local_or_s3(file_path, profile=s3_profile) as f:
-         cif_file = pdbx.CIFFile.read(f)
-   
+        cif_file = pdbx.CIFFile.read(f)
+
     extra_fields_preset = [
         "occupancy",
         "charge",
@@ -156,8 +157,8 @@ def parse_RNA_monomer_pdb_tmp(
     atom_array = pdbx.get_structure(
         **parser_args,
     )
-    #print(type(atom_array))
-    #print('----')
+    # print(type(atom_array))
+    # print('----')
     ## manually assign th entity and molecule type ids;
     ## monomers are all "single chain", so should have the same entity id,
     ## everything is a single asym, and sym id should be 1(identity)
@@ -174,6 +175,7 @@ def parse_RNA_monomer_pdb_tmp(
     atom_array = remove_std_residue_terminal_atoms(atom_array)
 
     return ParsedStructure(cif_file, atom_array)
+
 
 # TODO: check if extending existing primitives used below to support AF2 is ok
 def parse_pdb_af2(
