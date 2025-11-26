@@ -104,6 +104,7 @@ AA_NAME_TO_ATOM_NAMES = {
     "UNK": ["N", "CA", "C", "O", "CB", "CG"],
 }
 
+PROTEIN_BACKBONE_ATOMS = ["N", "CA", "C", "O"]
 RNA_BACKBONE_ATOMS = [
     "P",
     "OP1",
@@ -118,7 +119,6 @@ RNA_BACKBONE_ATOMS = [
     "O2'",
     "C1'",
 ]
-
 DNA_BACKBONE_ATOMS = [
     "P",
     "OP1",
@@ -132,6 +132,7 @@ DNA_BACKBONE_ATOMS = [
     "C2'",
     "C1'",
 ]
+BACKBONE_ATOMS = PROTEIN_BACKBONE_ATOMS + RNA_BACKBONE_ATOMS + DNA_BACKBONE_ATOMS
 
 NUCLEOTIDE_ATOMS = {
     "A": ["N9", "C8", "N7", "C5", "C6", "N6", "N1", "C2", "N3", "C4"],

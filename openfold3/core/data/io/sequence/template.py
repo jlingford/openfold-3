@@ -407,8 +407,8 @@ def calculate_ids_hit(
     """
 
     # 1. Create boolean masks to identify non-gaps
-    q_is_residue = q != "-"
-    t_is_residue = t != "-"
+    q_is_residue = ~np.isin(q, ["-", "."])
+    t_is_residue = ~np.isin(t, ["-", "."])
 
     # 2. Create a mask to identify columns that should be kept
     columns_to_keep = q_is_residue | t_is_residue

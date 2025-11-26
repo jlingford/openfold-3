@@ -14,9 +14,9 @@
 
 import gc
 import importlib
-import itertools
 import logging
 import traceback
+import warnings
 from contextlib import nullcontext
 from datetime import datetime
 from functools import partial
@@ -33,7 +33,7 @@ from openfold3.core.metrics.model_selection import (
     compute_final_model_selection_metric,
     compute_valid_model_selection_metrics,
 )
-from openfold3.core.metrics.validation_all_atom import (
+from openfold3.core.metrics.quality import (
     get_metrics,
     get_metrics_chunked,
 )
@@ -47,6 +47,7 @@ from openfold3.projects.of3_all_atom.config.model_config import (
 )
 from openfold3.projects.of3_all_atom.constants import (
     CORRELATION_METRICS,
+    METRIC_DENOMINATOR_ATTRS,
     TRAIN_LOGGED_METRICS,
     TRAIN_LOSSES,
     VAL_LOGGED_METRICS,
@@ -59,6 +60,15 @@ if deepspeed_is_installed:
     import deepspeed
 
 logger = logging.getLogger(__name__)
+
+# We define extra metrics that will cause this warning depending on the training stage
+# Only metrics with values present are logged, so we can ignore this error
+warnings.filterwarnings(
+    "ignore",
+    message=r"The `compute` method of metric .* was called before the `update` method",
+    category=UserWarning,
+    module="torchmetrics",
+)
 
 REFERENCE_CONFIG_PATH = Path(__file__).parent.resolve() / "config/reference_config.yml"
 
@@ -93,7 +103,6 @@ class OpenFold3AllAtom(ModelRunner):
         # Setup metrics
         self._setup_train_metrics()
         self._setup_val_metrics()
-        self._init_metric_enabled_tracker()
 
         # Initialize the gradient manager if doing per-sample grad clipping
         if self.per_sample_grad_clipping:
@@ -132,14 +141,15 @@ class OpenFold3AllAtom(ModelRunner):
         #  Make consistent later
         # Initialize all training epoch metric objects
         train_losses = {
-            loss_name: MeanMetric(nan_strategy="warn") for loss_name in TRAIN_LOSSES
+            loss_name: MeanMetric(nan_strategy="warn", sync_on_compute=False)
+            for loss_name in TRAIN_LOSSES
         }
         self.train_losses = MetricCollection(
             train_losses, prefix="train/", postfix="_epoch"
         )
 
         train_metrics = {
-            metric_name: MeanMetric(nan_strategy="warn")
+            metric_name: MeanMetric(nan_strategy="warn", sync_on_compute=False)
             for metric_name in TRAIN_LOGGED_METRICS
         }
 
@@ -150,37 +160,22 @@ class OpenFold3AllAtom(ModelRunner):
 
         # Initialize all validation epoch metric objects
         val_losses = {
-            loss_name: MeanMetric(nan_strategy="warn") for loss_name in VAL_LOSSES
+            loss_name: MeanMetric(nan_strategy="warn", sync_on_compute=False)
+            for loss_name in VAL_LOSSES
         }
         self.val_losses = MetricCollection(val_losses, prefix="val/")
 
         val_metrics = {
-            metric_name: MeanMetric(nan_strategy="warn")
+            metric_name: MeanMetric(nan_strategy="warn", sync_on_compute=False)
             for metric_name in VAL_LOGGED_METRICS
         }
         val_metrics.update(
             {
-                metric_name: PearsonCorrCoef(num_outputs=1)
+                metric_name: PearsonCorrCoef(num_outputs=1, sync_on_compute=False)
                 for metric_name in CORRELATION_METRICS
             }
         )
         self.val_metrics = MetricCollection(val_metrics, prefix="val/")
-
-    def _init_metric_enabled_tracker(self):
-        """
-        Initialize map of enabled losses and metrics for logging. Losses default to
-        False because not all losses will be calculated for each stage of training.
-        The appropriate losses will be enabled after the first pass through the model.
-        """
-        loss_log_names = itertools.chain(
-            self.train_losses.keys(), self.val_losses.keys()
-        )
-        metric_log_names = itertools.chain(
-            self.train_metrics.keys(), self.val_metrics.keys()
-        )
-        metric_enabled = {loss_name: False for loss_name in loss_log_names}
-        metric_enabled.update({metric_name: True for metric_name in metric_log_names})
-        self.metric_enabled = metric_enabled
 
     def _update_epoch_metric(
         self,
@@ -201,18 +196,15 @@ class OpenFold3AllAtom(ModelRunner):
             metric_collection:
                 MetricCollection object containing the metric to update
         """
-        if metric_log_name not in self.metric_enabled:
+
+        if metric_log_name not in metric_collection.keys():  # noqa: SIM118
             raise ValueError(
                 f"Metric {metric_log_name} is not being tracked and will "
                 f"not appear in epoch metrics. Please add it to "
                 f"the {phase.upper()}_LOSSES or METRICS constants."
             )
 
-        if not self.metric_enabled[metric_log_name]:
-            self.metric_enabled[metric_log_name] = True
-
         metric_obj = metric_collection[metric_log_name]
-
         metric_value = (
             (metric_value,) if type(metric_value) is not tuple else metric_value
         )
@@ -345,9 +337,10 @@ class OpenFold3AllAtom(ModelRunner):
             "Currently only local batch size of 1 per GPU is supported."
         )
 
-        assert isinstance(self.trainer.strategy, DDPStrategy), (
-            "Per-sample gradient clipping is only supported with DDPStrategy."
-        )
+        if self.trainer.world_size > 1:
+            assert isinstance(self.trainer.strategy, DDPStrategy), (
+                "Per-sample gradient clipping is only supported with DDPStrategy."
+            )
 
         example_feat = batch["token_mask"]
         if self.ema.device != example_feat.device:
@@ -672,27 +665,46 @@ class OpenFold3AllAtom(ModelRunner):
         """
         if not self.trainer.sanity_checking:
             # Sync and reduce metrics across ranks
+            # Done separately from compute() to get the sample counts
+            # so that only enabled metrics are logged
+            for metric in metrics.values():
+                metric.sync()
+                metric._should_unsync = False
+
             metrics_output = metrics.compute()
-            if self.per_sample_grad_clipping:
-                enabled_metrics = {
-                    name: result
-                    for name, result in metrics_output.items()
-                    if self.metric_enabled.get(name)
-                }
-                if self.logger is not None:
-                    self.logger.log_metrics(enabled_metrics, step=self.global_step)
+
+            # Only log metrics that have been updated
+            enabled_metrics = {}
+            for name, result in metrics_output.items():
+                metric_obj = metrics[name]
+                metric_type = type(metric_obj)
+
+                # Get the sample count attribute name (e.g., 'weight')
+                attr_name = METRIC_DENOMINATOR_ATTRS.get(metric_type)
+
+                if attr_name is None:
+                    raise NotImplementedError(
+                        f"Failed to get sample count for metric type "
+                        f"'{metric_type.__name__}'. Please add this metric "
+                        f"to the METRIC_DENOMINATOR_ATTRS constant."
+                    )
+
+                n_samples = getattr(metric_obj, attr_name).sum().item()
+                if n_samples > 0:
+                    enabled_metrics[name] = result
+
+            if self.per_sample_grad_clipping and self.logger is not None:
+                self.logger.log_metrics(enabled_metrics, step=self.global_step)
             else:
-                for name, result in metrics_output.items():
-                    # Only log metrics that have been updated
-                    if self.metric_enabled.get(name):
-                        self.log(
-                            name,
-                            result,
-                            on_step=False,
-                            on_epoch=True,
-                            logger=True,
-                            sync_dist=False,  # Already synced in compute()
-                        )
+                for name, result in enabled_metrics.items():
+                    self.log(
+                        name,
+                        result,
+                        on_step=False,
+                        on_epoch=True,
+                        logger=True,
+                        sync_dist=False,  # Already synced
+                    )
 
             if compute_model_selection:
                 model_selection = compute_final_model_selection_metric(

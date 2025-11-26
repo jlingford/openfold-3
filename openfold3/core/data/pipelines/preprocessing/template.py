@@ -27,9 +27,11 @@ from typing import Annotated, Literal
 
 import numpy as np
 import pandas as pd
+from biotite.database import RequestError
 from biotite.database.rcsb import fetch
 from biotite.structure.io import pdbx
 from biotite.structure.io.pdbx import CIFFile
+from func_timeout import func_timeout
 from pydantic import (
     BaseModel,
     BeforeValidator,
@@ -1718,17 +1720,14 @@ class TemplatePreprocessor:
 
     def __call__(self) -> None:
         # Preprocess template alignments into template cache entries
-        if len(self.inputs) == 1:
-            print("Preprocessing templates...")
-            self._preprocess_templates_for_query(self.inputs[0])
-        elif len(self.inputs) > 1:
+        if len(self.inputs) >= 1:
             manager = mp.Manager()
             self.seq_hash_map = manager.dict()
             self.hash_template_id_map = manager.dict()
             with mp.Pool(self.n_processes) as pool:
                 for _ in tqdm(
                     pool.imap_unordered(
-                        self._preprocess_templates_for_query,
+                        self.preprocess_templates,
                         self.inputs,
                         chunksize=self.chunksize,
                     ),
@@ -1738,6 +1737,7 @@ class TemplatePreprocessor:
                     pass
 
         else:
+            print("No chains with templates to preprocess.")
             return
 
         # Update the dataset cache/inference query set with the preprocessed template
@@ -1746,6 +1746,21 @@ class TemplatePreprocessor:
             self._update_dataset_cache()
         elif isinstance(self.input_set, InferenceQuerySet):
             self._update_inference_query_set()
+
+    def preprocess_templates(
+        self,
+        input_data: TemplatePreprocessorInputTrain | TemplatePreprocessorInputInference,
+    ) -> None:
+        try:
+            func_timeout(60, self._preprocess_templates_for_query, args=(input_data,))
+        except Exception as e:
+            print(
+                f"Failed to preprocess template alignment "
+                f"{input_data.aln_path}:"
+                f"\n\nException:\n{str(e)}"
+                f"\n\nType:\n{type(e).__name__}"
+                f"\n\nTraceback:\n{traceback.format_exc()}"
+            )
 
     def _preprocess_templates_for_query(
         self,
@@ -1785,7 +1800,7 @@ class TemplatePreprocessor:
         if self.create_logs:
             worker_logger.info(
                 f"Template cache entry {template_cache_entry_file} available:"
-                " {cache_entry_available}"
+                f" {cache_entry_available}"
             )
 
         # 5. Template consistency checks and filtering
@@ -1870,11 +1885,22 @@ class TemplatePreprocessor:
                                 "Structure not available, fetching"
                                 f" {template.entry_id}."
                             )
-                        fetch(
-                            pdb_ids=template.entry_id,
-                            format="cif",
-                            target_path=self.structure_directory,
-                        )
+                        try:
+                            fetch(
+                                pdb_ids=template.entry_id,
+                                format="cif",
+                                target_path=self.structure_directory,
+                            )
+                        except RequestError as _:
+                            msg = (
+                                f" {template.entry_id} is not a valid PDB ID."
+                                " Skipping this template."
+                            )
+                            if self.create_logs:
+                                worker_logger.info(msg)
+                            else:
+                                print(msg)
+                            continue
 
                 # D. Load template structure
                 # i. from precache if available

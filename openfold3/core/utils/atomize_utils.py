@@ -122,7 +122,7 @@ def aggregate_atom_feat_to_tokens(
     eps: float = 1e-9,
 ):
     """
-    Aggregate atom-level features to token-level features with mean or sum aggregation.
+    Aggregates atom-level features to token-level features with mean or sum aggregation.
 
     Args:
         token_mask:
@@ -201,6 +201,210 @@ def aggregate_atom_feat_to_tokens(
         )
 
     return token_feat
+
+
+def aggregate_atom_feat_to_tokens_nd(
+    atom_feat: torch.Tensor,
+    atom_dims: list[int],
+    atom_to_token_index_list: list[torch.Tensor],
+    *,
+    token_sizes: list[int] | None = None,
+    atom_masks: list[torch.Tensor | None] | None = None,
+    token_masks: list[torch.Tensor | None] | None = None,
+    aggregate_fn: Literal["sum", "any", "mean"] = "sum",
+    eps: float = 1e-9,
+) -> torch.Tensor:
+    """Aggregates atom-level to token-level features along an arbitrary number of axes.
+
+    Reduces one axis at a time from largest to smallest using
+    aggregate_atom_feat_to_tokens with 'sum' internally.
+
+    Modes:
+        - 'sum' uses 'sum'
+        - 'any' uses (sum > 0)
+        - 'mean' divides the final sum by the product of per-axis atom counts per token
+
+    Shapes:
+        - atom_feat: [*, N_atom_0, *, N_atom_i, *, N_atom_k, *]
+        - atom_to_token_index_list[i]: [N_atom_0, ..., N_atom_i, ...]
+        - atom_masks[i]: [N_atom_0, ..., N_atom_i, ...]
+        - token_masks[i]: [N_token_0, ..., N_token_i, ...]
+        - returns:  [*, N_token_0, *, N_token_i, *, N_atom_k, *]
+
+    Args:
+        atom_feat (torch.Tensor):
+            Atom-level features, with k+1 atom-wise dimensions [*, N_atom_0, *,
+            N_atom_i, *, N_atom_k, *].
+        atom_dims (list[int]):
+            The atom-wise dimensions along which to do the atom -> token pooling.
+        atom_to_token_index_list (list[torch.Tensor]):
+            Atom-wise tensors of token indices, one for each dimension in atom_dims
+            indicating which token each atom belongs to along a specific dimension
+            [N_atom_0, ..., N_atom_i, ...].
+        token_sizes (list[int] | None, optional):
+            Number of tokens alogn each dimension to be reduced. If None, inferred as
+            the max + 1 of the tensor from atom_to_token_index_list for the
+            corresponding dimension.
+        atom_masks (list[torch.Tensor  |  None] | None, optional):
+            Atom-wise masks, one per dimension, for selecting atoms that contribute to
+            the aggregation [N_atom_0, ..., N_atom_i, ...].
+        token_masks (list[torch.Tensor  |  None] | None, optional):
+            Token padding masks, on per dimension [N_token_0, ..., N_token_i, ...].
+        aggregate_fn (Literal['sum', 'any', 'mean'], optional):
+            Mode of the aggregation. Defaults to "sum".
+        eps (float, optional):
+            Constant for numerical stability. Defaults to 1e-9.
+
+    Raises:
+        ValueError:
+            If there is atom_dims <> atom_to_token_index_list mismatch.
+        ValueError:
+            If a mapping (atom_to_token_index_list[i]) or an atom mask (atom_masks[i])
+            cannot be broadcast to the reduction step shape (*Bshape, A).
+        ValueError:
+            If a token mask (token_masks[i]) is provided and its last dimension does not
+            equal the token size R for that axis.
+        ValueError:
+            If the aggregation function is not supported.
+
+    Returns:
+        torch.Tensor:
+            The reduced tensor [*, N_token_0, *, N_token_i, *, N_atom_k, *]. Note that
+            atom-wise dimensions not specified in atom_dims are NOT reduced.
+    """
+    if len(atom_dims) != len(atom_to_token_index_list):
+        raise ValueError(
+            "`atom_dims` and `atom_to_token_index_list` must have equal length."
+        )
+    K = len(atom_dims)
+    if token_sizes is None:
+        token_sizes = [None] * K
+    if atom_masks is None:
+        atom_masks = [None] * K
+    if token_masks is None:
+        token_masks = [None] * K
+
+    # Normalize dims to positive and sort from largest to smallest
+    D = atom_feat.dim()
+    atom_dims_pos = [(d if d >= 0 else D + d) for d in atom_dims]
+    order = sorted(range(K), key=lambda i: atom_dims_pos[i], reverse=True)
+
+    y = atom_feat
+    per_axis_counts = [None] * K
+
+    def _broadcast_to_other_dim_atom_dim(
+        t: torch.Tensor, Bshape: torch.Size, A: int
+    ) -> torch.Tensor:
+        """
+        Broadcasts t to shape (*Bshape, A) by inserting singleton dims before last axis.
+        """
+        # Ensure last is A
+        if t.shape[-1] != A:
+            raise ValueError(f"Last dim mismatch: expected {A}, got {t.shape[-1]}")
+        # Add singleton dims before the last axis until ranks match
+        while t.dim() < (len(Bshape) + 1):
+            t = t.unsqueeze(-2)
+        # Expand across Bshape
+        return t.expand(*Bshape, A)
+
+    for idx in order:
+        # Get the original position of this axis
+        d = atom_dims_pos[idx]
+        # Move to the end so we can reduce along -1
+        perm = [i for i in range(y.dim()) if i != d] + [d]
+        y_perm = y.permute(*perm)
+        bs = y_perm.shape[:-1]
+        n_atom = y_perm.shape[-1]
+
+        # Gather per-axis inputs
+        idx_map = atom_to_token_index_list[idx].to(y.device).long()
+        atom_mask_i = atom_masks[idx]
+        token_mask_i = token_masks[idx]
+        n_token = token_sizes[idx]
+        # Infer from mapping
+        if n_token is None:
+            n_token = int(idx_map.max().item()) + 1
+
+        # Broadcast atom mask to (*bs, n_atom)
+        idx_map_bs_atom = _broadcast_to_other_dim_atom_dim(idx_map, bs, n_atom)
+        if atom_mask_i is None:
+            atom_mask_bs_atom = torch.ones(
+                *bs, n_atom, dtype=torch.bool, device=y.device
+            )
+        else:
+            atom_mask_bs_atom = _broadcast_to_other_dim_atom_dim(
+                atom_mask_i.to(torch.bool), bs, n_atom
+            )
+
+        # Broadcast token mask to (*bs, n_token)
+        if token_mask_i is None:
+            token_mask_bs_token = torch.ones(
+                *bs, n_token, dtype=torch.bool, device=y.device
+            )
+        else:
+            t = token_mask_i.to(torch.bool)
+            if t.shape[-1] != n_token:
+                raise ValueError(
+                    f"token_mask last dim mismatch: expected {n_token}, got "
+                    f"{t.shape[-1]}"
+                )
+            while t.dim() < (len(bs) + 1):
+                t = t.unsqueeze(-2)
+            token_mask_bs_token = t.expand(*bs, n_token)
+
+        # Aggregate along last axis [*, N_atom] -> [*, N_token]
+        y_perm = aggregate_atom_feat_to_tokens(
+            token_mask=token_mask_bs_token,
+            atom_to_token_index=idx_map_bs_atom,
+            atom_mask=atom_mask_bs_atom,
+            atom_feat=y_perm,
+            atom_dim=-1,
+            aggregate_fn="sum",
+            eps=eps,
+        )
+
+        # Counts per token on this axis for mean
+        if aggregate_fn == "mean":
+            counts = torch.zeros(*bs, n_token, device=y.device, dtype=y_perm.dtype)
+            counts = counts.scatter_add_(
+                -1, idx_map_bs_atom, atom_mask_bs_atom.to(y_perm.dtype)
+            )
+            per_axis_counts[idx] = counts  # [..., R]
+
+        # Put reduced axis back to d
+        axes = list(range(y_perm.dim()))
+        axes.pop(-1)
+        axes.insert(d, y_perm.dim() - 1)
+        y = y_perm.permute(*axes)
+
+    # Apply aggregation fn
+    if aggregate_fn == "sum":
+        return y
+    if aggregate_fn == "any":
+        return (y > 0) if y.dtype != torch.bool else y
+    if aggregate_fn == "mean":
+        # Product of per-axis counts (aligned to output) → joint denominator
+        denom = None
+        for i in range(K):
+            counts = per_axis_counts[i]
+            if counts is None:
+                continue
+            # Counts is [..., N_token_i] with shape 'bs' used when reducing axis i
+            c = counts
+            # Align to final y by inserting singleton dims
+            while c.dim() < y.dim():
+                c = c.unsqueeze(-1)
+            axes = list(range(c.dim()))
+            axes.pop(-1)
+            axes.insert(atom_dims_pos[i], c.dim() - 1)
+            # Move last axis to atom_dims_pos[i]
+            c = c.permute(*axes)
+            denom = c if denom is None else denom * c
+        if denom is None:
+            return y
+        return y / (denom.clamp_min(1.0) + eps)
+
+    raise ValueError(f"Invalid aggregate_fn: {aggregate_fn}")
 
 
 def get_atom_to_onehot_token_index(

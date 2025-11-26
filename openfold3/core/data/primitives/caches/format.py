@@ -753,6 +753,10 @@ class ValidationDatasetChainData(ClusteredDatasetChainData):
             selected for metrics) subset in the validation set construction (see SI
             5.8). This is mostly for debugging / informative purposes and not required
             by the model.
+        sabdab_annotation (Literal["AB-H", "AB-L", "AG"] | None):
+            Indicates whether this chain is annotated in SAbDab as an antibody heavy
+            chain ("AB-H"), antibody light chain ("AB-L"), or antigen ("AG"). Only
+            applies to antibody-antigen complexes.
     """
 
     # Adds the following fields:
@@ -761,6 +765,7 @@ class ValidationDatasetChainData(ClusteredDatasetChainData):
     use_metrics: bool
     ranking_model_fit: float | None
     source_subset: Literal["monomer", "multimer", "base"] | None
+    sabdab_annotation: Literal["AB-H", "AB-L", "AG"] | None = None
 
 
 @dataclass

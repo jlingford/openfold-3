@@ -111,7 +111,7 @@ def create_template_feature_precursor_of3(
                 # cases to be able to include them or skip them in a way that allows for
                 # retaining the correct number of sampled templates
                 if sum(is_pseudo_beta_atom) != len(residue_starts):
-                    logger.warning(
+                    logger.debug(
                         "Skipping template with non-canonical/missing C-beta atoms."
                     )
                     continue
@@ -153,10 +153,10 @@ def create_template_feature_precursor_of3(
                 template_idx += 1
             except Exception as e:
                 tb = traceback.format_exc()
-                logger.warning(
+                logger.debug(
                     "-" * 40
                     + "\n"
-                    + f"Failed to process template, skipping: {str(e)}\n"
+                    + f"Skipping template with exception: {str(e)}\n"
                     + f"Exception type: {type(e).__name__}\nTraceback: {tb}"
                     + "-" * 40
                 )
