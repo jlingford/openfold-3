@@ -38,7 +38,7 @@ from openfold3.core.data.resources.residues import MoleculeType
 logger = logging.getLogger(__name__)
 
 
-def precrop_chains(
+def crop_chainwise(
     atom_array: AtomArray,
     n_chains: int = 20,
     preferred_chain_or_interface: str | list[str, str] | None = None,
@@ -49,7 +49,7 @@ def precrop_chains(
 
     Follows 2.5.4 of the AlphaFold3 SI. Will select a random interface token center atom
     and return the closest N chains based on minimum distances between any token center
-    atoms, therefore acting as an initial fixed precropping of too-large assemblies.
+    atoms, therefore acting as an initial fixed "pre-cropping" of too-large assemblies.
     Note that we do not count ligand chains towards the N chain limit, and include all
     ligands within a specified distance of the selected N chains.
 
@@ -59,8 +59,8 @@ def precrop_chains(
         atom_array:
             AtomArray containing the structure to subset
         n_chains:
-            Number of chains to keep in the precrop. If the structure has less than N
-            chains, all of them are kept. Default is 20.
+            Number of chains to keep. If the structure has less than N chains, all of
+            them are kept. Default is 20.
         interface_distance_threshold:
             Distance threshold in Å that an interface token center atom must have to any
             token center atom in another chain to be considered an interface token
@@ -74,13 +74,12 @@ def precrop_chains(
         AtomArray with the closest n_chains based on token center atom distances, plus
         any nearby ligands.
     """
-    logger.info("Running precropping.")
-    
-    # 1) Check if precropping is necessary
+    # 1) Check if chain-cropping is necessary
     atom_array_lig = atom_array[atom_array.molecule_type_id == MoleculeType.LIGAND]
 
     n_ligand_chains = len(np.unique(atom_array_lig.chain_id))
-    n_effective_chains = len(np.unique(atom_array.chain_id)) - n_ligand_chains
+    n_total_chains = len(np.unique(atom_array.chain_id))
+    n_effective_chains = n_total_chains - n_ligand_chains
 
     if n_effective_chains <= n_chains:
         return atom_array
@@ -582,11 +581,11 @@ def sample_crop_strategy_and_set_mask(
 
 
 class CroppingOutput(NamedTuple):
-    """Output of the pre-cropping and crop mask setting.
+    """Output of the chain-wise "pre-cropping" and crop mask application.
 
     Attrs:
         atom_array (AtomArray):
-            The (potentially precropped) AtomArray with the crop_mask annotation set.
+            The (potentially chain-cropped) AtomArray with the crop_mask annotation set.
         crop_strategy (str):
             The crop strategy that was applied. One of ['contiguous', 'spatial',
             'spatial_interface', 'whole'].
@@ -596,17 +595,17 @@ class CroppingOutput(NamedTuple):
     crop_strategy: str
 
 
-def precrop_and_set_crop_mask(
+def crop_chainwise_and_set_crop_mask(
     atom_array: AtomArray,
     apply_crop: bool,
     crop_config: dict,
     preferred_chain_or_interface: str | list[str, str] | None = None,
 ) -> CroppingOutput:
-    """Applies chain-wise precropping (if enabled) and sets the main crop mask.
+    """Applies chain-wise cropping (if enabled) and sets the main crop mask.
 
-    This first applies chain-wise precropping (see precrop_chains and 2.5.4 of AF3 SI),
-    and then samples and applies a standard cropping strategy (contiguous, spatial,
-    spatial interface). Note that this second step of cropping only sets the 'crop_mask'
+    This first applies chain-wise cropping (see crop_chainwise and 2.5.4 of AF3 SI), and
+    then samples and applies a standard cropping strategy (contiguous, spatial, spatial
+    interface). Note that this second step of cropping only sets the 'crop_mask'
     annotation of the AtomArray (in-place), which is True for every atom in the crop and
     False for all others, and does not actually yet crop the AtomArray itself. This is
     due to downstream symmetry-expansion code requiring the full ground-truth.
@@ -627,21 +626,21 @@ def precrop_and_set_crop_mask(
 
     Returns:
         CroppingOutput:
-            NamedTuple containing the (potentially precropped) AtomArray with the
+            NamedTuple containing the (potentially chain-cropped) AtomArray with the
             crop_mask annotation set, and the crop strategy that was applied.
     """
-    precrop_settings = crop_config["precrop"]
+    chain_crop_settings = crop_config["chain_crop"]
 
-    # 1) Apply chain-wise precropping if enabled
-    if precrop_settings["enabled"]:
-        atom_array = precrop_chains(
+    # 1) Apply chain-wise "pre-cropping" if enabled
+    if chain_crop_settings["enabled"]:
+        atom_array = crop_chainwise(
             atom_array=atom_array,
             preferred_chain_or_interface=preferred_chain_or_interface,
-            n_chains=precrop_settings["n_chains"],
-            interface_distance_threshold=precrop_settings[
+            n_chains=chain_crop_settings["n_chains"],
+            interface_distance_threshold=chain_crop_settings[
                 "interface_distance_threshold"
             ],
-            ligand_inclusion_distance=precrop_settings["ligand_inclusion_distance"],
+            ligand_inclusion_distance=chain_crop_settings["ligand_inclusion_distance"],
         )
 
     # 2) Sample and apply "standard" cropping strategy if enabled, setting the crop_mask

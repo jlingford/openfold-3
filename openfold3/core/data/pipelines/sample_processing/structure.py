@@ -33,7 +33,7 @@ from openfold3.core.data.primitives.structure.component import (
     assign_component_ids_from_metadata,
 )
 from openfold3.core.data.primitives.structure.cropping import (
-    precrop_and_set_crop_mask,
+    crop_chainwise_and_set_crop_mask,
 )
 from openfold3.core.data.primitives.structure.labels import (
     assign_uniquified_atom_names,
@@ -107,7 +107,7 @@ def process_target_structure_of3(
     tokenize_atom_array(atom_array=atom_array)
 
     # Apply optional pre-cropping and main cropping (setting crop_mask attribute)
-    atom_array, crop_strategy = precrop_and_set_crop_mask(
+    atom_array, crop_strategy = crop_chainwise_and_set_crop_mask(
         atom_array=atom_array,
         apply_crop=apply_crop,
         crop_config=crop_config,

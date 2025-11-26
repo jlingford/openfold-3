@@ -124,7 +124,7 @@ class CropWeights(BaseModel):
     spatial_interface: float = 0.4
 
 
-class PrecropSettings(BaseModel):
+class ChainCropSettings(BaseModel):
     enabled: bool = False
     n_chains: int = 20
     interface_distance_threshold: float = 15.0
@@ -136,7 +136,7 @@ class CropSettings(BaseModel):
 
     token_budget: int = 384
     crop_weights: CropWeights = CropWeights()
-    precrop: PrecropSettings = PrecropSettings()
+    chain_crop: ChainCropSettings = ChainCropSettings()
 
 
 class LossWeights(BaseModel):
