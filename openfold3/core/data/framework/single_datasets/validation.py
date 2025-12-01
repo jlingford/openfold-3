@@ -64,12 +64,12 @@ class ValidationPDBDataset(BaseOF3Dataset):
         self.create_datapoint_cache()
 
         # Cropping should be disabled for validation datasets
-        if self.crop.token_crop.enabled:
+        if self.crop["token_crop"]["enabled"]:
             logger.warning(
                 "Token cropping is enabled for ValidationPDBDataset. Make sure this is"
                 " intended."
             )
-        if self.crop.chain_crop.enabled:
+        if self.crop["chain_crop"]["enabled"]:
             logger.warning(
                 "Chain cropping is enabled for ValidationPDBDataset. Make sure this is"
                 " intended."
