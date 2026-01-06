@@ -1050,14 +1050,19 @@ def remove_covalent_nonprotein_chains(atom_array: AtomArray) -> AtomArray:
     ]
 
     # Find bonds that have exactly one protein atom
+    cross_chain_bonds_covalent_has_nonprotein_mask = (
+        cross_chain_bonds_covalent_mol_type[:, 0] == MoleculeType.PROTEIN
+    ) ^ (cross_chain_bonds_covalent_mol_type[:, 1] == MoleculeType.PROTEIN)
     cross_chain_bonds_covalent_has_nonprotein = cross_chain_bonds_covalent[
-        (cross_chain_bonds_covalent_mol_type[:, 0] == MoleculeType.PROTEIN)
-        ^ (cross_chain_bonds_covalent_mol_type[:, 1] == MoleculeType.PROTEIN)
+        cross_chain_bonds_covalent_has_nonprotein_mask
     ]
 
     # Get non-protein atom indices then covalent non-protein chain IDs
     cross_chain_atom_nonprotein = cross_chain_bonds_covalent_has_nonprotein.ravel()[
-        cross_chain_bonds_covalent_mol_type.ravel() != MoleculeType.PROTEIN
+        cross_chain_bonds_covalent_mol_type[
+            cross_chain_bonds_covalent_has_nonprotein_mask
+        ].ravel()
+        != MoleculeType.PROTEIN
     ]
     covalent_nonprotein_chain_ids = atom_array.chain_id[cross_chain_atom_nonprotein]
 
