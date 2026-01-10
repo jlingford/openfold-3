@@ -170,6 +170,7 @@ class DataModule(pl.LightningDataModule):
         self.num_workers = data_module_config.num_workers
         self.num_workers_validation = data_module_config.num_workers_validation
         self.data_seed = data_module_config.data_seed
+        self.next_data_seed = data_module_config.data_seed
         self.epoch_len = data_module_config.epoch_len
         self.next_dataset_indices = {}
         # next_epoch is None to start with in the 1st epoch
@@ -424,14 +425,19 @@ class DataModule(pl.LightningDataModule):
             num_workers = self.num_workers
 
         logger.debug(f"Seeding DataModule {mode} generator with {self.data_seed}")
-        generator = torch.Generator().manual_seed(self.data_seed)
-        self.generators[mode] = generator
+        generator = self.generators.get(mode)
+        if generator is None:
+            generator = torch.Generator().manual_seed(self.next_data_seed)
+            self.generators[mode] = generator
 
-        # Base seed will be determined by self.generator (seeded by self.data_seed).
-        # Model seeding uses the RankSpecificSeedCallback instead of
-        # pl.seed_everything(workers=True), so this function is passed explicitly here.
+        # Base seed will be determined by self.generators[mode] (seeded by
+        # self.data_seed). Model seeding uses the RankSpecificSeedCallback
+        # instead of pl.seed_everything(workers=True), so this function is
+        # passed explicitly here.
         worker_init_fn = partial(pl_worker_init_function, rank=self.global_rank)
-        logger.debug(f"Creating {mode} dataloader: num_workers={num_workers}, rank={self.global_rank}.")
+        logger.debug(
+            f"Creating {mode} dataloader: num_workers={num_workers}, rank={self.global_rank}."
+        )
         return DataLoader(
             dataset=self.datasets_by_mode[mode],
             batch_size=self.batch_size,
@@ -499,28 +505,28 @@ class DataModule(pl.LightningDataModule):
     def state_dict(self):
         state = {
             "next_dataset_indices": self.next_dataset_indices,
-            "next_epoch": self.trainer.current_epoch + 1 if self.trainer is not None else 1,
+            "next_epoch": self.trainer.current_epoch + 1
+            if self.trainer is not None
+            else 1,
         }
         logger.debug(f"Saving DataModule state dict: {state}")
         return state
 
     def load_state_dict(self, state_dict: dict[str, Any]):
         """Loads the state dict into the DataModule.
-        
+
         Hook order when resuming is:
         1. DataModule.__init__
         2. DataModule.setup
         3. DataModule.load_state_dict
         4. DataModule.train_dataloader
-        so this sets next_epoch correctly for the first epoch after resuming 
+        so this sets next_epoch correctly for the first epoch after resuming
         for seeding the DistributedSampler.
         """
         logger.debug(f"Loading DataModule state dict: {state_dict}")
 
         self.next_epoch = state_dict.get("next_epoch", 0)
-        next_data_seed = self.data_seed + self.next_epoch
-        logger.debug(f"Seeding DataModule generator with {next_data_seed}")
-        self.generator = torch.Generator().manual_seed(next_data_seed)
+        self.next_data_seed = self.data_seed + self.next_epoch
 
         # Return if no in-order sampling datasets are used (FT3)
         if not self.next_dataset_indices:
@@ -534,7 +540,7 @@ class DataModule(pl.LightningDataModule):
                 "current configuration and checkpoint."
                 f"Current {current_index_keys} Checkpoint {loaded_index_keys}"
             )
-        self.next_dataset_indices = state_dict["next_dataset_indices"]        
+        self.next_dataset_indices = state_dict["next_dataset_indices"]
 
 
 class InferenceDataModule(DataModule):
