@@ -69,7 +69,7 @@ from openfold3.projects.of3_all_atom.model import OpenFold3
 from openfold3.projects.of3_all_atom.project_entry import OF3ProjectEntry
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+
 # # Add OpenFold3 model to safe models to load
 torch.serialization.add_safe_globals(
     [
@@ -101,7 +101,6 @@ class ExperimentRunner(ABC):
     """Abstract class for experiments"""
 
     def __init__(self, experiment_config: ExperimentConfig):
-        logger.debug("---- Called ExperimentRunner.__init__()")
         self.experiment_config = experiment_config
 
         self.mode = experiment_config.experiment_settings.mode
@@ -137,7 +136,6 @@ class ExperimentRunner(ABC):
     @cached_property
     def lightning_module(self) -> pl.LightningModule:
         """Instantiate and return the model."""
-        logger.debug("---- Called ExperimentRunner.lightning_module()")
         return self.project_entry.runner(self.model_config, log_dir=self.log_dir)
 
     @cached_property
@@ -170,7 +168,6 @@ class ExperimentRunner(ABC):
 
     @cached_property
     def lightning_data_module(self):
-        logger.debug("---- Called ExperimentRunner.lightning_data_module()")
         return DataModule(self.data_module_config)
 
     ###############
@@ -218,7 +215,6 @@ class ExperimentRunner(ABC):
     @cached_property
     def strategy(self) -> DDPStrategy | DeepSpeedStrategy | str:
         """Determine and return the training strategy."""
-        logger.debug("---- Called ExperimentRunner.strategy()")
         if self.deepspeed_config_path is not None:
             _strategy = DeepSpeedStrategy(
                 config=self.deepspeed_config_path,
@@ -269,7 +265,6 @@ class ExperimentRunner(ABC):
     @cached_property
     def trainer(self) -> pl.Trainer:
         """Create and return the trainer instance."""
-        logger.debug("---- Called ExperimentRunner.trainer()")
         trainer_args = self.pl_trainer_args.model_dump(
             exclude={"deepspeed_config_path", "distributed_timeout", "mpi_plugin"}
         )
@@ -290,7 +285,6 @@ class ExperimentRunner(ABC):
         Depending on the mode (train, eval, test, predict), the corresponding
         PyTorch Lightning method is invoked.
         """
-        logger.debug("---- Called ExperimentRunner.run()")
         # Run process appropriate process
         logger.info(f"Running {self.mode} mode.")
         # Training + validation
@@ -323,7 +317,6 @@ class TrainingExperimentRunner(ExperimentRunner):
     """Training experiment builder."""
 
     def __init__(self, experiment_config: TrainingExperimentConfig):
-        logger.debug("---- Called TrainingExperimentRunner.__init__()")
         super().__init__(experiment_config)
 
         self.seed = experiment_config.experiment_settings.seed
@@ -350,7 +343,6 @@ class TrainingExperimentRunner(ExperimentRunner):
         This includes configuring logging, setting the random seed,
         and initializing WandB if enabled.
         """
-        logger.debug("---- Called TrainingExperimentRunner.setup()")
         super().setup()
         self._setup_logger()
         if self.use_wandb:
@@ -432,7 +424,6 @@ class TrainingExperimentRunner(ExperimentRunner):
         return do_manual
 
     def manual_load_checkpoint(self):
-        logger.debug("---- Called TrainingExperimentRunner.manual_load_checkpoint()")
         init_from_ema_weights = self.ckpt_load_settings.init_from_ema_weights
         ckpt = load_checkpoint(Path(self.restart_checkpoint_path))
         state_dict = get_state_dict_from_checkpoint(

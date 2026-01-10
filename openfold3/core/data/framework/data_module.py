@@ -72,7 +72,6 @@ from openfold3.core.data.tools.colabfold_msa_server import (
 from openfold3.core.utils.tensor_utils import dict_multimap
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 class DatasetMode(enum.Enum):
@@ -162,7 +161,6 @@ class DataModule(pl.LightningDataModule):
     """A LightningDataModule class for organizing Datasets and DataLoaders."""
 
     def __init__(self, data_module_config: DataModuleConfig) -> None:
-        logger.debug("---- Called DataModule.__init__()")
         super().__init__()
 
         # Possibly initialize directly from DataModuleConfig
@@ -188,7 +186,6 @@ class DataModule(pl.LightningDataModule):
                 self.next_dataset_indices[cfg.name] = 0
 
     def setup(self, stage=None):
-        logger.debug("---- Called DataModule.setup()")
 
         self.datasets_by_mode = {k: [] for k in DatasetMode}
 
@@ -454,7 +451,6 @@ class DataModule(pl.LightningDataModule):
         Returns:
             DataLoader: training dataloader.
         """
-        logger.debug("---- Called DataModule.train_dataloader()")
         train_dataset = self.datasets_by_mode[DatasetMode.train]
         train_data_probs = self.multi_dataset_config.get_config_for_mode(
             DatasetMode.train

@@ -54,7 +54,6 @@ from torch.utils.data.distributed import DistributedSampler
 from openfold3.core.data.framework.single_datasets.abstract_single import SingleDataset
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 class SamplerDataset(Dataset):
     """
@@ -301,7 +300,7 @@ class OF3DistributedSampler(DistributedSampler):
         indices_for_this_rank = list(super().__iter__())
 
         logger.debug(
-            f"---- Called OF3DistributedSampler.__iter__ in rank {self.rank}: "
+            f"Called OF3DistributedSampler.__iter__ in rank {self.rank}: "
             f"epoch {self.epoch}, seed {self.seed + self.epoch}, sampled dataset "
             f"indices {dataset_indices.tolist()}, sampled datapoint indices "
             f"{datapoint_indices.tolist()}, indices_for_this_rank "

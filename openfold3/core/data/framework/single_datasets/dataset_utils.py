@@ -31,7 +31,6 @@ from openfold3.core.utils.permutation_alignment import (
 )
 
 worker_seed_log = logging.getLogger(f"{__name__}.worker_seed")
-worker_seed_log.setLevel(logging.DEBUG)
 
 
 def pad_to_world_size(df: pd.DataFrame, world_size: int | None = None) -> pd.DataFrame:
