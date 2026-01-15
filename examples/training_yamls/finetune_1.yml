@@ -41,10 +41,17 @@ model_update:
   custom:
     settings:
       model_selection_weight_scheme: fine_tuning
+      memory:
+        train:
+          msa_module:
+            swiglu_seq_chunk_size: 1024
     architecture:
       shared: 
         diffusion:
           no_samples: 32
+      template:
+        template_pair_stack:
+          ckpt_per_template: true
       loss_module:
         diffusion:
           chunk_size: 2
