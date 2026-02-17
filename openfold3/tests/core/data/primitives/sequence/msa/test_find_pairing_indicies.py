@@ -101,7 +101,14 @@ def test_find_pairing_indices(count_array, pairing_masks, expected):
     [
         pytest.param(
             2,
-            np.array([[0, 0], [0, 0]]),
+            np.array(
+                [
+                    [0, 0],
+                    [0, 0],
+                    [1, 1],
+                    [1, 1],
+                ]
+            ),  # Only first 2 rows included (S0), S1 excluded
             id="max_rows_2",
         ),
         pytest.param(
