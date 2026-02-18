@@ -37,6 +37,7 @@ jobs:
           aws_image_id: ami-0754c6e75b3b97dcd  # Deep Learning AMI Neuron (Ubuntu 22.04)
           aws_instance_type: trn1.2xlarge 
           aws_home_dir: /home/ubuntu
+          aws_root_device_size: 200
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
 
