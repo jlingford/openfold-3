@@ -10,7 +10,7 @@ python scripts/dev/convert_ckpt_to_ema_only.py /path/to/full_checkpoint
 
 import argparse
 import operator
-from pathlib import Path
+from pathlib import Path, PosixPath
 
 import ml_collections as mlc
 import torch
@@ -29,6 +29,7 @@ torch.serialization.add_safe_globals(
         float,
         operator.add,
         mlc.config_dict._Op,
+        PosixPath,
     ]
 )
 
