@@ -21,21 +21,31 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CACHE_PATH = Path("~/.openfold3/").expanduser()
 CHECKPOINT_ROOT_FILENAME = "ckpt_root"
-CHECKPOINT_NAME = "of3-p2-v1.pt"
 
 OPENFOLD_BUCKET = "openfold"
-CHECKPOINT_S3_KEY = f"staging/{CHECKPOINT_NAME}"
+
+OPENFOLD_MODEL_CHECKPOINT_REGISTRY = {
+    "openfold3_p2_v1": "of3-p2-v1.pt",
+}
+DEFAULT_CHECKPOINT_NAME = "openfold3_p2_v1"
 
 
-def download_model_parameters(download_dir: Path) -> None:
+def download_model_parameters(
+    download_dir: Path,
+    parameter_name: str,
+) -> None:
     """Download OpenFold3 model parameters from S3 if not already present.
 
     Args:
         download_dir: Directory to download the checkpoint file into.
-            The file will be saved as ``download_dir / CHECKPOINT_NAME``.
+            The file will be saved as ``download_dir / parameters.value.filename``.
+        parameters: Which set of parameters to download (e.g. OpenFold3 p2 v1).
     """
     download_dir = Path(download_dir)
-    target_path = download_dir / CHECKPOINT_NAME
+
+    checkpoint_file_name = OPENFOLD_MODEL_CHECKPOINT_REGISTRY[parameter_name]
+    target_path = download_dir / checkpoint_file_name
+    CHECKPOINT_S3_KEY = f"staging/{checkpoint_file_name}"
 
     if target_path.exists():
         logger.info("Parameters already present at %s", target_path)

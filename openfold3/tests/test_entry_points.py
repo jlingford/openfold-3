@@ -32,8 +32,11 @@ from openfold3.entry_points.experiment_runner import (
     TrainingExperimentRunner,
     WandbHandler,
 )
+from openfold3.entry_points.parameters import (
+    DEFAULT_CHECKPOINT_NAME,
+    OPENFOLD_MODEL_CHECKPOINT_REGISTRY,
+)
 from openfold3.entry_points.validator import (
-    CHECKPOINT_NAME,
     InferenceExperimentConfig,
     TrainingExperimentConfig,
     TrainingExperimentSettings,
@@ -533,7 +536,11 @@ class TestInferenceCheckpointLoading:
             expt_config = InferenceExperimentConfig.model_validate(
                 {"cache_path": tmp_path}
             )
-        assert expt_config.inference_ckpt_path == tmp_path / CHECKPOINT_NAME
+        assert expt_config.inference_ckpt_name == DEFAULT_CHECKPOINT_NAME
+        assert (
+            expt_config.inference_ckpt_path
+            == tmp_path / OPENFOLD_MODEL_CHECKPOINT_REGISTRY[DEFAULT_CHECKPOINT_NAME]
+        )
 
 
 class TestTemplatePreprocessorSettings:

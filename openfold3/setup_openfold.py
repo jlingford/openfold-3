@@ -28,7 +28,8 @@ import biotite.setup_ccd
 
 from openfold3.core.utils.s3 import download_s3_file, s3_file_matches_local
 from openfold3.entry_points.parameters import (
-    CHECKPOINT_NAME,
+    DEFAULT_CHECKPOINT_NAME,
+    OPENFOLD_MODEL_CHECKPOINT_REGISTRY,
     download_model_parameters,
 )
 
@@ -70,7 +71,8 @@ def setup_param_directory(
 
     # Check if parameters have already been downloaded
     ckpt_path = ckpt_root_file.read_text().strip() if ckpt_root_file.exists() else None
-    if ckpt_path and (Path(ckpt_path) / CHECKPOINT_NAME).exists():
+    checkpoint_file_name = OPENFOLD_MODEL_CHECKPOINT_REGISTRY[DEFAULT_CHECKPOINT_NAME]
+    if ckpt_path and (Path(ckpt_path) / checkpoint_file_name).exists():
         existing_path = Path(ckpt_root_file.read_text().strip())
         logger.info(
             f"OpenFold3 parameters may already be installed at: {existing_path}"
@@ -128,7 +130,7 @@ def setup_param_directory(
 def download_parameters(param_dir) -> None:
     """Perform the parameter download."""
     logger.info("Starting parameter download...")
-    download_model_parameters(Path(param_dir))
+    download_model_parameters(Path(param_dir), DEFAULT_CHECKPOINT_NAME)
     logger.info("Download completed successfully.")
 
 
