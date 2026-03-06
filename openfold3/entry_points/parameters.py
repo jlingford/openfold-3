@@ -27,19 +27,19 @@ CHECKPOINT_ROOT_FILENAME = "ckpt_root"
 
 OPENFOLD_BUCKET = "openfold"
 
-class CheckpointEntry(dataclass(frozen=True)):
+
+@dataclass(frozen=True)
+class CheckpointEntry:
     file_name: str
     version_compatibility: str | None = None  # e.g. ">=0.4", "<0.4"
 
 
 OPENFOLD_MODEL_CHECKPOINT_REGISTRY = {
     "openfold3_p1": CheckpointEntry(
-        file_name="of3_ft3_v1.pt",
-        version_compatibility="<0.4"
+        file_name="of3_ft3_v1.pt", version_compatibility="<0.4"
     ),
     "openfold3_p2_v1": CheckpointEntry(
-        file_name="of3-p2-v1.pt",
-        version_compatibility=">=0.4"
+        file_name="of3-p2-v1.pt", version_compatibility=">=0.4"
     ),
 }
 

@@ -23,6 +23,9 @@ from typing import Any, Literal
 from lightning_fabric.plugins.collectives.torch_collective import default_pg_timeout
 from pydantic import BaseModel, field_validator, model_validator
 from pydantic import ConfigDict as PydanticConfigDict
+from packaging.version import Version
+from packaging.specifiers import SpecifierSet
+from importlib.metadata import version
 
 from openfold3.core.data.pipelines.preprocessing.template import (
     TemplatePreprocessorSettings,
@@ -395,7 +398,28 @@ class InferenceExperimentConfig(ExperimentConfig):
             raise ValueError(
                 f"Provided checkpoint path {self.inference_ckpt_path} does not exist"
             )
-        elif self.inference_ckpt_name is None:
+        elif self.inference_ckpt_name is not None:
+            if self.inference_ckpt_name not in OPENFOLD_MODEL_CHECKPOINT_REGISTRY:
+                raise ValueError(
+                    f"inference_ckpt_name {self.inference_ckpt_name} not found in "
+                    "checkpoint registry. Please select from "
+                    f"{list(OPENFOLD_MODEL_CHECKPOINT_REGISTRY.keys())}."
+                )
+
+            current_openfold3_version = Version(version("openfold3"))
+            allowed_versions = SpecifierSet(
+                OPENFOLD_MODEL_CHECKPOINT_REGISTRY[
+                    self.inference_ckpt_name
+                ].version_compatibility
+            )
+            if current_openfold3_version not in allowed_versions:
+                raise ValueError(
+                    f"Selected checkpoint {self.inference_ckpt_name} is not compatible"
+                    "with the currently installed OpenFold3 version"
+                    f"{current_openfold3_version}. Allowed versions for this "
+                    f"checkpoint are {allowed_versions}."
+                )
+        else:
             logger.info(
                 "No inference_ckpt_path or inference_ckpt_name provided, "
                 "selecting default checkpoint."
@@ -434,7 +458,8 @@ class InferenceExperimentConfig(ExperimentConfig):
                 f.write(str(param_dir))
 
         path_to_ckpt = (
-            param_dir / OPENFOLD_MODEL_CHECKPOINT_REGISTRY[self.inference_ckpt_name].file_name
+            param_dir
+            / OPENFOLD_MODEL_CHECKPOINT_REGISTRY[self.inference_ckpt_name].file_name
         )
 
         if not path_to_ckpt.exists():

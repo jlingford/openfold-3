@@ -549,7 +549,8 @@ class TestInferenceCheckpointLoading:
             )
 
         expected_ckpt_path = (
-            tmp_path / OPENFOLD_MODEL_CHECKPOINT_REGISTRY[DEFAULT_CHECKPOINT_NAME].file_name
+            tmp_path
+            / OPENFOLD_MODEL_CHECKPOINT_REGISTRY[DEFAULT_CHECKPOINT_NAME].file_name
         )
         assert expt_config.inference_ckpt_name == DEFAULT_CHECKPOINT_NAME
         assert expt_config.inference_ckpt_path == expected_ckpt_path
@@ -561,7 +562,11 @@ class TestInferenceCheckpointLoading:
         with (
             patch.dict(
                 "openfold3.entry_points.parameters.OPENFOLD_MODEL_CHECKPOINT_REGISTRY",
-                {"dummy_ckpt": CheckpointEntry(file_name="dummy_checkpoint.pt")},
+                {
+                    "dummy_ckpt": CheckpointEntry(
+                        file_name="dummy_checkpoint.pt", version_compatibility=">0.3.0"
+                    )
+                },
             ),
             patch("builtins.input", return_value="yes"),
             patch(
@@ -577,6 +582,15 @@ class TestInferenceCheckpointLoading:
         assert expt_config.inference_ckpt_name == selected_ckpt_name
         assert expt_config.inference_ckpt_path == expected_ckpt_path
         assert expected_ckpt_path.exists()
+
+    def test_checkpoint_version_compatibility(self):
+        # Check that loading old `openfold3_p1` raises version compatibiility error
+        with pytest.raises(
+            ValueError, match="Selected checkpoint openfold3_p1 is not compatible"
+        ):
+            InferenceExperimentConfig.model_validate(
+                {"inference_ckpt_name": "openfold3_p1"}
+            )
 
 
 class TestTemplatePreprocessorSettings:
@@ -709,5 +723,6 @@ class TestSetupOpenFold:
         assert (tmp_path / CHECKPOINT_ROOT_FILENAME).read_text() == str(tmp_path)
         # Check that dummy checkpoint file has been installed correctly
         assert (
-            tmp_path / OPENFOLD_MODEL_CHECKPOINT_REGISTRY[DEFAULT_CHECKPOINT_NAME].file_name
+            tmp_path
+            / OPENFOLD_MODEL_CHECKPOINT_REGISTRY[DEFAULT_CHECKPOINT_NAME].file_name
         ).exists()
