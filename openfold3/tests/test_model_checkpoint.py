@@ -87,11 +87,6 @@ class TestOF3ModelCheckpointing:
         expt_runner = TrainingExperimentRunner(expt_config)
         expt_runner.setup()
 
-        # manually update ema weights in lieu of a training step:
-        expt_runner.lightning_module.on_train_batch_end()
-        # expt_runner.lightning_module.ema.update(expt_runner.lightning_module.model)
-
-        print(expt_runner.lightning_module.ema.state_dict()["params"].keys())
         assert (
             "version_tensor" in expt_runner.lightning_module.ema.state_dict()["params"]
         )
