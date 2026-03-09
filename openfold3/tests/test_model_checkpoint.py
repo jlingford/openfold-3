@@ -14,21 +14,13 @@
 
 import textwrap
 
+import pytest  # noqa: F401  - used for pytest tmp fixture
+import torch
+
 from build.lib.openfold3.entry_points.experiment_runner import TrainingExperimentRunner
 from openfold3.core.config import config_utils
 from openfold3.core.utils.checkpoint_loading_utils import load_checkpoint
 from openfold3.entry_points.validator import TrainingExperimentConfig
-import pytest  # noqa: F401  - used for pytest tmp fixture
-import torch
-
-from openfold3.core.loss.loss_module import OpenFold3Loss
-from openfold3.core.utils.precision_utils import OF3DeepSpeedPrecision
-from openfold3.core.utils.tensor_utils import tensor_tree_map
-from openfold3.projects.of3_all_atom.project_entry import OF3ProjectEntry
-from openfold3.projects.of3_all_atom.runner import OpenFold3AllAtom
-from openfold3.tests import compare_utils
-from openfold3.tests.config import consts
-from openfold3.tests.data_utils import random_of3_features
 
 
 class TestOF3ModelCheckpointing:
