@@ -426,7 +426,7 @@ class TrainingExperimentRunner(ExperimentRunner):
     def manual_load_checkpoint(self):
         init_from_ema_weights = self.ckpt_load_settings.init_from_ema_weights
         ckpt = load_checkpoint(Path(self.restart_checkpoint_path))
-        state_dict = get_state_dict_from_checkpoint(
+        state_dict, ema = get_state_dict_from_checkpoint(
             ckpt, init_from_ema_weights=init_from_ema_weights
         )
 
@@ -434,8 +434,18 @@ class TrainingExperimentRunner(ExperimentRunner):
         self.lightning_module.load_state_dict(
             state_dict, strict=self.ckpt_load_settings.strict_loading
         )
-        if "ema" in ckpt:
-            self.lightning_module.ema.load_state_dict(ckpt["ema"])
+
+        self.lightning_module.ema.load_state_dict(ema)
+
+        configured_ema_decay = self.model_config.settings.ema.decay
+        loaded_ema_decay = self.lightning_module.ema.decay
+        if configured_ema_decay != loaded_ema_decay:
+            logger.info(
+                "Overriding checkpoint EMA decay (%s) with config EMA decay (%s).",
+                loaded_ema_decay,
+                configured_ema_decay,
+            )
+        self.lightning_module.ema.decay = configured_ema_decay
 
         if self.ckpt_load_settings.restore_lr_scheduler:
             last_global_step = int(ckpt["global_step"])
@@ -659,7 +669,7 @@ class InferenceExperimentRunner(ExperimentRunner):
         self._log_model_config()
         logger.info(f"Loading weights from {self.ckpt_path}")
         ckpt = load_checkpoint(self.ckpt_path)
-        state_dict = get_state_dict_from_checkpoint(ckpt, init_from_ema_weights=True)
+        state_dict, _ = get_state_dict_from_checkpoint(ckpt, init_from_ema_weights=True)
         self.lightning_module.load_state_dict(state_dict, strict=True)
 
     def run(self, inference_query_set) -> None:
