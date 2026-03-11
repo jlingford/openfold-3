@@ -98,7 +98,7 @@ Full output directories are provided on the [OpenFold HuggingFace repo](https://
 
 Queries can include any combination of single- or multi-chain proteins, with or without ligands, and may contain multiple such complexes. <br/>
 Input is provided via a `query.json` file — a structured JSON document that defines each query, its constituent chains, chain types (e.g., protein, DNA, ligand) and sequences or molecular graphs. Optionally, the query can include paths to precomputed protein or RNA MSAs. <br/>
-See {doc}`OpenFold3 input format <input_format>` for instructions on how to specify your input data.
+See {doc}`OpenFold3 input format <input_format_reference>` for instructions on how to specify your input data.
 
 
 ### 3.2 Inference Modes by MSA Input
@@ -263,7 +263,7 @@ output_writer_settings:
 To save model embeddings, add the field `write_latent_outputs` to the `output_writer_settings` i.e.: 
 ```yaml
 output_writer_settings:
-	write_latent_outputs: True
+  write_latent_outputs: True
 ```
 
 ---

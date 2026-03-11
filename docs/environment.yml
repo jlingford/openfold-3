@@ -5,3 +5,4 @@ dependencies:
   - sphinx
   - myst-parser
   - furo
+  - sphinx-autobuild

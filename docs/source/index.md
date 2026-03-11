@@ -42,7 +42,7 @@ A summary of the features supported include:
 - Pipelines for generating MSAs using the [ColabFold server](https://github.com/sokrypton/ColabFold) or using JackHMMER / hhblits following the AlphaFold3 protocol
 - {doc}`Structure templates <template_how_to>` for protein monomers
 - Kernel acceleration through [cuEquivariance](https://docs.nvidia.com/cuda/cuequivariance) and [DeepSpeed4Science](https://www.deepspeed.ai/tutorials/ds4sci_evoformerattention/) kernels - more details {doc}`here <kernels>`
-- Support for {doc}`multi-query jobs <input_format>` with {ref}`distributed predictions across multiple GPUs <inference-run-on-multiple-gpus>`
+- Support for {doc}`multi-query jobs <input_format_reference>` with {ref}`distributed predictions across multiple GPUs <inference-run-on-multiple-gpus>`
 - Custom settings for {ref}`memory constrained GPU resources <inference-low-memory-mode>`
 
 and more features to come...
@@ -59,15 +59,19 @@ kernels.md
 
 ```{toctree}
 :caption: How To Guides
-:hidden: 
+:hidden:
 
 inference
 training
 precomputed_msa_generation_how_to
 precomputed_msa_how_to
 template_how_to
+```
 
-Development
+```{toctree}
+:caption: Development
+:hidden:
+
 debugging_how_to
 ```
 
@@ -75,8 +79,9 @@ debugging_how_to
 :caption: Reference 
 :hidden: 
 
-input_format
+input_format_reference
 configuration_reference
+data_pipeline_reference
 ```
 
 ```{toctree}
