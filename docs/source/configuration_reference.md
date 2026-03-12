@@ -26,8 +26,8 @@ Defines overall experiment parameters, including execution mode and seed configu
 - `log_dir` *(Path | None)*: Directory for logs (default: `null`)
 - `seeds` *(int | list[int])*: Starting seed or list of random seeds for inference (default: `[42]`)
 - `num_seeds` *(int | None)*: Number of seeds to generate if only a starting seed is provided (default: `null`)
-- `use_msa_server` *(bool)*: Whether to use ColabFold MSA server (default: `false`)
-- `use_templates` *(bool)*: Whether to use template structures (default: `false`)
+- `use_msa_server` *(bool)*: Whether to use ColabFold MSA server (default: `true`)
+- `use_templates` *(bool)*: Whether to use template structures (default: `true`)
 - `skip_existing` *(bool)*: Skip results that already exist (default: `false`)
 
 **Example**:
