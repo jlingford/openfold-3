@@ -7,7 +7,7 @@ This guide walks through preparing PDB structure data for OpenFold3 training. Th
 All output files directly required as an input to the training script are **marked in bold with an asterisk (\*)**. There is full flexibility in modifying the pipeline as long as it generates these required outputs, though it's recommended to stick to the format below.
 
 ```{tip}
-For detailed format specifications, preprocessing internals, and guidance on adapting this pipeline to custom (non-PDB) data, see the {doc}`Extended Data Pipeline Reference <data_pipeline_extended_reference>`.
+For detailed format specifications, preprocessing internals, and guidance on adapting this pipeline to custom (non-PDB) data, see the {doc}`Understanding Dataset Caches <understanding_dataset_caches>`.
 ```
 
 ![Data Pipeline Overview](../imgs/data_pipeline_overview.png)
@@ -32,14 +32,14 @@ python scripts/data_preprocessing/preprocess_ccd_biotite.py components.cif compo
 ### 1.3 Structure Preprocessing
 The core structure preprocessing converts raw PDB mmCIF files into an efficient `.npz` format storing Biotite `AtomArray`s, as well as a JSON index of all PDB contents. It performs the following steps:
 
-- **Parsing** structures using Biotite (bioassembly expansion, bond reading, entity/chain/molecule type assignment)
+- **Parsing** structures using Biotite (bioassembly expansion, bond reading, chain renumbering to numerical IDs, entity/chain/molecule type assignment)
 - **Cleaning up** structures following the AlphaFold3 SI §2.5.4 protocol (residue conversions, removal of waters/hydrogens/clashing chains, adding unresolved atoms, etc.)
 - **Generating reference molecules** with RDKit conformers for each unique ligand (saved as **SDF files\***)
 - **Extracting metadata** into a `metadata.json` with structure-level, chain-level, and interface-level information
 
 Script: [scripts/data_preprocessing/preprocess_pdb_of3.py](https://github.com/aqlaboratory/openfold-3/blob/main/scripts/data_preprocessing/preprocess_pdb_of3.py)
 
-For details on the individual parsing and cleanup steps, the metadata format, and the reference molecule processing, see the {doc}`Extended Data Pipeline Reference <data_pipeline_extended_reference>`.
+For details on the individual parsing and cleanup steps, the metadata format, and the reference molecule processing, see the {doc}`Understanding Dataset Caches <understanding_dataset_caches>`.
 
 Output: per-structure directories with **NPZ\***, FASTA, and optionally CIF files, plus a **metadata.json\*** and **reference molecule SDF files\***:
 
