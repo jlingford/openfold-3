@@ -1,4 +1,4 @@
-# Copyright 2025 AlQuraishi Laboratory
+# Copyright 2026 AlQuraishi Laboratory
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,7 +26,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CACHE_PATH = Path("~/.openfold3/").expanduser()
 CHECKPOINT_ROOT_FILENAME = "ckpt_root"
 
-OPENFOLD_BUCKET = "openfold"
+OPENFOLD_BUCKET = "openfold3-data"
 
 
 @dataclass(frozen=True)
@@ -35,15 +36,18 @@ class CheckpointEntry:
 
 
 OPENFOLD_MODEL_CHECKPOINT_REGISTRY = {
-    "openfold3_p1": CheckpointEntry(
+    "openfold3-p1": CheckpointEntry(
         file_name="of3_ft3_v1.pt", version_compatibility="<0.4"
     ),
-    "openfold3_p2_v1": CheckpointEntry(
-        file_name="of3-p2-v1.pt", version_compatibility=">=0.4"
+    "openfold3-p2-145k": CheckpointEntry(
+        file_name="of3-p2-145k.pt", version_compatibility=">=0.4"
+    ),
+    "openfold3-p2-155k": CheckpointEntry(
+        file_name="of3-p2-155k.pt", version_compatibility=">=0.4"
     ),
 }
 
-DEFAULT_CHECKPOINT_NAME = "openfold3_p2_v1"
+DEFAULT_CHECKPOINT_NAME = "openfold3-p2-155k"
 
 
 def download_model_parameters(
@@ -66,7 +70,7 @@ def download_model_parameters(
 
     checkpoint_file_name = OPENFOLD_MODEL_CHECKPOINT_REGISTRY[parameter_name].file_name
     target_path = download_dir / checkpoint_file_name
-    checkpoint_s3_key = f"staging/{checkpoint_file_name}"
+    checkpoint_s3_key = f"openfold3-parameters/{checkpoint_file_name}"
 
     if target_path.exists() and not force_download:
         logger.info("Parameters already present at %s", target_path)
@@ -95,3 +99,26 @@ def download_model_parameters(
             return
 
     download_s3_file(OPENFOLD_BUCKET, checkpoint_s3_key, target_path)
+
+
+def get_default_checkpoint_dir(cache_path: Path | None = None) -> Path:
+    """Returns the default checkpoint directory.
+
+    Prefers to use the path specified by cache path / CHECKPOINT_ROOT_FILENAME.
+    If that file does not exist,
+     - Falls back to using the cache_path directly
+     - creates the CHECKPOINT_ROOT_FILENAME pointing to the cache path
+    """
+    if not cache_path:
+        cache_path = os.environ.get("OPENFOLD_CACHE") or DEFAULT_CACHE_PATH
+    ckpt_root_file = Path(cache_path) / CHECKPOINT_ROOT_FILENAME
+    if ckpt_root_file.exists():
+        param_dir = Path(ckpt_root_file.read_text().strip())
+    else:
+        param_dir = Path(cache_path)
+        logger.info(
+            f"Storing path to OpenFold parameters {param_dir} in {ckpt_root_file}"
+        )
+        with open(ckpt_root_file, "w") as f:
+            f.write(str(param_dir))
+    return param_dir

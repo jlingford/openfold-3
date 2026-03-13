@@ -1,4 +1,4 @@
-# Copyright 2025 AlQuraishi Laboratory
+# Copyright 2026 AlQuraishi Laboratory
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -584,12 +584,12 @@ class TestInferenceCheckpointLoading:
         assert expected_ckpt_path.exists()
 
     def test_checkpoint_version_compatibility(self):
-        # Check that loading old `openfold3_p1` raises version compatibiility error
+        # Check that loading old `openfold3-p1` raises version compatibiility error
         with pytest.raises(
-            ValueError, match="Selected checkpoint openfold3_p1 is not compatible"
+            ValueError, match="Selected checkpoint openfold3-p1 is not compatible"
         ):
             InferenceExperimentConfig.model_validate(
-                {"inference_ckpt_name": "openfold3_p1"}
+                {"inference_ckpt_name": "openfold3-p1"}
             )
 
 

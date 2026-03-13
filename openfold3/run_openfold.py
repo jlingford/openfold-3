@@ -1,4 +1,4 @@
-# Copyright 2025 AlQuraishi Laboratory
+# Copyright 2026 AlQuraishi Laboratory
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -154,7 +154,7 @@ def predict(
     num_model_seeds: int | None = None,
     runner_yaml: Path | None = None,
     use_msa_server: bool = True,
-    use_templates: bool = False,
+    use_templates: bool = True,
     output_dir: Path | None = None,
 ):
     """Perform inference on a set of queries defined in the query_json."""

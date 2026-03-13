@@ -137,7 +137,7 @@ For example configurations for all stages of training, please see [examples/trai
 For testing or debugging:
 
 ```bash
-run_openfold train --runner_yaml training.yaml --seed 42
+run_openfold train --runner-yaml training.yaml --seed 42
 ```
 
 ### 4.2 Multi-GPU Training
