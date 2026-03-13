@@ -52,8 +52,28 @@ More information on how to customize your inference prediction can be found at o
 
 OpenFold3-preview performs competitively with the state of the art in open source biomolecular structure prediction, while being the only model to match AlphaFold3's performance on monomeric RNA structures.
 
-**Preliminary results:**
+**OpenFold3-preview-2 results:**
+<picture>
+  <source srcset="assets/of3p2-benchmarks-rnp.png">
+  <img alt="Runs N' Poses performance of OpenFold3-preview-2 and other models">
+</picture>
+<picture>
+  <source srcset="assets/of3p2-benchmarks-fb-interface.png">
+  <img alt="FoldBench interface performance of OpenFold3-preview-2 and other models">
+</picture>
+<picture>
+  <source srcset="assets/of3p2-benchmarks-abag.png">
+  <img alt="AF3 antibody-antigen performance of OpenFold3-preview and other models">
+</picture>
 
+Performance of OF3p2 and other models on a diverse set of benchmarks: 
+- [Runs and Poses](https://www.biorxiv.org/content/10.1101/2025.02.03.636309v3) 
+- [FoldBench](https://www.biorxiv.org/content/10.1101/2025.05.22.655600v1)
+- [AF3 antibody-antigen set](https://www.nature.com/articles/s41586-024-07487-w)
+
+For more details on inferences procedures and benchmarking methods, please refer to the [OpenFold3 Preview 2 whitepaper](https://portal.openfold.omsf.io/reports/of3p2_technical_report.pdf)
+
+**OpenFold3-preview results:**
 <picture>
   <source srcset="assets/combined_benchmarks.png">
   <img alt="Benchmark performance of OpenFold3-preview and other models">
@@ -64,9 +84,7 @@ Performance of OF3p and other models on a diverse set of benchmarks:
 - Proein-protein complexes from [CASP16](https://www.biorxiv.org/content/10.1101/2025.05.29.656875v1) and [FoldBench](https://www.biorxiv.org/content/10.1101/2025.05.22.655600v1) 
 - Protein-ligand complexes from the [Runs and Poses](https://www.biorxiv.org/content/10.1101/2025.02.03.636309v3) 
 
-For more details on inferences procedures and benchmarking methods, please refer to:
-- [OpenFold3 Preview whitepaper](assets/whitepaper.pdf).
-- [OpenFold3 Preview 2 whitepaper](https://portal.openfold.omsf.io/reports/of3p2_technical_report.pdf).
+For more details on inferences procedures and benchmarking methods, please refer to the [OpenFold3 Preview whitepaper](assets/whitepaper.pdf).
 
 ## Upcoming
 The final OpenFold3 model is still in development, and we are actively working on the following features:
