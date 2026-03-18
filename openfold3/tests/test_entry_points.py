@@ -36,6 +36,7 @@ from openfold3.entry_points.experiment_runner import (
 from openfold3.entry_points.parameters import (
     CHECKPOINT_ROOT_FILENAME,
     DEFAULT_CHECKPOINT_NAME,
+    LEGACY_CHECKPOINTS,
     OPENFOLD_MODEL_CHECKPOINT_REGISTRY,
     CheckpointEntry,
 )
@@ -750,7 +751,9 @@ class TestSetupOpenFold:
         assert (tmp_path / CHECKPOINT_ROOT_FILENAME).exists()
         assert (tmp_path / CHECKPOINT_ROOT_FILENAME).read_text() == str(tmp_path)
 
-        expected_checkpoints = ["openfold3-p2-145k", "openfold3-p2-155k"]
+        expected_checkpoints = list(
+            set(OPENFOLD_MODEL_CHECKPOINT_REGISTRY.keys()) - set(LEGACY_CHECKPOINTS)
+        )
         for ckpt_name in expected_checkpoints:
             assert (
                 tmp_path / OPENFOLD_MODEL_CHECKPOINT_REGISTRY[ckpt_name].file_name

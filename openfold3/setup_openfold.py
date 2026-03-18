@@ -29,6 +29,7 @@ import biotite.setup_ccd
 from openfold3.core.utils.s3 import download_s3_file, s3_file_matches_local
 from openfold3.entry_points.parameters import (
     DEFAULT_CHECKPOINT_NAME,
+    LEGACY_CHECKPOINTS,
     OPENFOLD_MODEL_CHECKPOINT_REGISTRY,
     download_model_parameters,
 )
@@ -132,11 +133,10 @@ def setup_param_directory(
 def download_parameters(param_dir) -> None:
     """Perform the parameter download."""
     # Exclude incompatible checkpoints:
-    legacy_checkpoints = ["openfold3-p1"]
     all_checkpoints = [
         name
         for name in OPENFOLD_MODEL_CHECKPOINT_REGISTRY
-        if name not in legacy_checkpoints
+        if name not in LEGACY_CHECKPOINTS
     ]
 
     logger.info("Select parameters to download:")
