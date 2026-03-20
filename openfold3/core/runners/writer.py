@@ -177,6 +177,7 @@ class OF3OutputWriter(BasePredictionWriter):
         plddt = confidence_scores["plddt"]
         pde = confidence_scores["pde"]
         gpde = confidence_scores["gpde"]
+        pae = confidence_scores["pae"]
         aggregated_confidence_scores = {"avg_plddt": np.mean(plddt), "gpde": gpde}
 
         logger.info("Recording PAE confidence outputs")
@@ -190,7 +191,7 @@ class OF3OutputWriter(BasePredictionWriter):
         )
 
         # Full confidence scores
-        full_confidence_scores = {"plddt": plddt, "pde": pde}
+        full_confidence_scores = {"plddt": plddt, "pde": pde, "pae": pae}
         out_fmt = self.full_confidence_format
         out_file_full = Path(f"{output_prefix}_confidences.{out_fmt}")
 

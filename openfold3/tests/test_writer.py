@@ -147,6 +147,7 @@ class TestPredictionWriter:
         expected_full_scores = {
             "plddt": confidence_scores["plddt"],
             "pde": confidence_scores["pde"],
+            "pae": confidence_scores["pae"],
         }
         out_file_full = Path(f"{output_prefix}_confidences.{output_fmt}")
         actual_full_scores = self._load_full_confidence_scores(out_file_full)
