@@ -158,7 +158,7 @@ class OutputWritingSettings(BaseModel):
     Used by OF3OutputWriter in openfold3.core.runners.writer
     """
 
-    structure_format: Literal["pdb", "cif"] = "cif"
+    structure_format: Literal["pdb", "cif", "cif.gz"] = "cif"
     full_confidence_output_format: Literal["json", "npz"] = "json"
     write_features: bool = False
     write_latent_outputs: bool = False

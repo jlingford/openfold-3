@@ -16,6 +16,7 @@
 
 import logging
 import pickle
+import gzip
 from pathlib import Path
 from typing import Literal, NamedTuple
 
@@ -325,7 +326,7 @@ def write_structure(
     if isinstance(output_path, str):
         output_path = Path(output_path)
 
-    suffix = output_path.suffix
+    suffix = "".join(output_path.suffixes)  # to handle .cif.gz
 
     match suffix:
         case ".npz":
@@ -334,6 +335,18 @@ def write_structure(
         case ".pkl":
             with open(output_path, "wb") as f:
                 pickle.dump(atom_array, f)
+
+        case ".cif.gz":
+            file_obj = _create_cif_file(
+                suffix=".cif",
+                atom_array=atom_array,
+                data_block=data_block,
+                include_bonds=include_bonds,
+                make_ost_compatible=make_ost_compatible,
+            )
+
+            with gzip.open(output_path, "wt") as gz_file:
+                file_obj.write(gz_file)
 
         case ".cif" | ".bcif":
             file_obj = _create_cif_file(

@@ -202,7 +202,7 @@ Configures the format of output files.
 **Pydantic Model**: [`OutputWritingSettings`](https://github.com/aqlaboratory/openfold-3/blob/main/openfold3/entry_points/validator.py#L141)
 
 **All Options**:
-- `structure_format` *(Literal["pdb", "cif"])*: Output format (default: `cif`)
+- `structure_format` *(Literal["pdb", "cif", "cif.gz"])*: Output format (default: `cif`)
 - `full_confidence_output_format` *(Literal["json", "npz"])*: Confidence output format (default: `json`)
 - `write_features` *(bool)*: Write intermediate features (default: `false`)
 - `write_latent_outputs` *(bool)*: Write model intermediate outputs (default: `false`)
