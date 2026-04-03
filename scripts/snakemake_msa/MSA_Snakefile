@@ -327,7 +327,7 @@ def generate_rule_all(config: dict[[str, str]],databases:List[str], input_fasta:
 ### setup and validate input databases 
 openfold_env = config["openfold_env"]
 databases = config["databases"]
-valid_databases = set(["uniref90", "cfdb","bfd", "uniref100", "uniprot", "mgnify", "rfam", "nucleotide_collection", "rnacentral"])
+valid_databases = set(["uniref90", "cfdb","bfd", "uniref30", "uniprot", "mgnify", "rfam", "nucleotide_collection", "rnacentral"])
 base_database_path = config["base_database_path"]
 for db in databases:
     assert db in valid_databases, f"Invalid database inputs. must be one of {valid_databases}"
