@@ -16,3 +16,10 @@ cutlass/
 
 # User-specific pre-commit settings
 .pre-commit-config.yaml
+
+# jlingford
+output/
+input/
+logs/
+tmp/
+rp24_scratch2/
