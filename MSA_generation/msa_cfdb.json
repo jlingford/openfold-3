@@ -1,0 +1,12 @@
+{
+    "input_fasta":"/home/jamesl/rp24_scratch/rp24/jamesl2/MMseqs2_stuff/openfold-3/fastas/msa_input_famoushydgeneneighbours.faa",
+    "openfold_env":"/fs04/scratch2/rp24/jamesl2/MMseqs2_stuff/openfold-3/scripts/snakemake_msa/rp24_scratch2/jamesl2/miniconda/conda/envs/of3-aln-env",
+    "databases":["cfdb"],
+    "base_database_path":"/home/jamesl/rp24_scratch/Database/AF2-db/OpenFold3_DB/alignment_dbs",
+    "output_directory":"/home/jamesl/rp24_scratch/rp24/jamesl2/MMseqs2_stuff/msas/of3",
+    "jackhmmer_output_format":"a3m",
+    "jackhmmer_threads":2,
+    "hhblits_threads":16,
+    "tmpdir": "/home/jamesl/rp24_scratch/rp24/jamesl2/MMseqs2_stuff/openfold-3/tmp/msa_tmp",
+    "run_template_search":false
+}
