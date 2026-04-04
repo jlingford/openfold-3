@@ -20,10 +20,7 @@
 # ---
 conda activate /fs04/scratch2/rp24/jamesl2/MMseqs2_stuff/openfold-3/scripts/snakemake_msa/rp24_scratch2/jamesl2/miniconda/conda/envs/of3-aln-env
 
-echo "NPROC ="
-nproc
-
-snakemake -s MSA_Snakefile \
+snakemake -s ../scripts/snakemake_msa/MSA_Snakefile \
     --cores 48 \
     --configfile ./msa_cfdb.json \
     --nolock \
